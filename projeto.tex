@@ -1,0 +1,160 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{fullpage}
+\usepackage[latin1]{inputenc}
+\usepackage{url}
+\usepackage{epsf}
+\usepackage{amsmath}
+\usepackage{cases}
+\usepackage{graphicx}
+\usepackage[latin1]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage{nicealgo}
+
+\newcommand{\MT}{\ensuremath{\mathrm{\emph{MT}}}}
+\newcommand{\ML}{\ensuremath{\mathrm{\emph{ML}}}}
+
+\begin{document}
+\pagestyle{empty}
+
+\begin{center}
+{\sc Projeto em Identifica\c{c}\~ao de Indiv\'{\i}duos por Impress\~ao Digital}\\
+{\sc Professor: Alexandre Xavier Falc\~ao}\\
+{\sc E-mail:} \url{afalcao@ic.unicamp.br}\\
+{\sc MO445/MC940 - Primeiro Semestre de 2022}
+\end{center}
+
+\section{Enunciado}
+
+
+Este projeto tem por objetivos exercitar e avaliar vocês sobre os conceitos aprendidos na disciplina MO445 / MC940 no contexto da identifica\c{c}\~ao de inviv\'{\i}duos a partir de impress\~oes digitais. O projeto está dividido em duas fases, cada fase utiliza uma base de imagens diferente: images\_01 e images\_02 para as fases 1 e 2, respectivamente. 
+
+As imagens para a fase 1 estão sobrescritas com anotações que podem dificultar a identificação dos indivíduos (Figura~\ref{f.exemplo}a). O código project01.c, que depende da libmo445~\footnote{Baixe a última versão da página do curso e altere o Makefile da pasta fingerprint do projeto para o endereço no qual instalou a libmo445 na sua máquina. Para compilar o programa, basta digitar make project01.}, contém funções que deverão ser codificadas para gerar uma região de interesse (ROI) contendo, o quanto for possível, a impressão digital apenas (Figura~\ref{f.exemplo}b). Vocês podem avaliar também a possibilidade de perder parte da impressão digital, extraindo uma ROI centrada de menor tamanho. Isso evitaria os riscos que sobraram na Figura~\ref{f.exemplo}b. 
+
+As imagens para a fase 2 já não apresentam este tipo de problema (Figuras~\ref{f.exemplo}c e~\ref{f.exemplo}d). Neste caso, porém, partes comuns das imagens de um mesmo indivíduo precisam ser alinhadas para que uma rede neural possa reconhecê-las como sendo do mesmo indivíduo. O código project02.c, que também depende da libmo445, recebe um arquivo com pares de imagens, denominadas fonte e destino, para serem comparadas; extrai uma ROI centrada na impressão digital da imagem fonte; alinha esta ROI com uma ROI correspondente na imagem destino; e prepara os dados para que os pares de ROIs correspondentes sejam analisados por uma rede neural (scripts em ./scripts), a fim de decidir se as imagens fonte e destino são ou não são do mesmo indivíduo.   
+
+\begin{figure}
+  \begin{center}
+    \begin{tabular}{ccc}
+      \includegraphics[width=5cm]{./exemplo-a.png} & 
+      \includegraphics[width=5cm]{./exemplo-b.png} & 
+      \includegraphics[width=5cm]{./exemplo-c.png}
+      \\
+      (a) & (b) & (c) \\ 
+      \includegraphics[width=5cm]{./exemplo-d.png} & 
+      \includegraphics[width=5cm]{./exemplo-e.png} & 
+      \includegraphics[width=5cm]{./exemplo-f.png} \\
+      (d) & (e) & (f)
+      \end{tabular}
+    \end{center}
+    \caption{(a) Exemplo de imagem da base 1. (b) Região de interesse contendo a impressão digital em (a). (c) e (d) Exemplos de imagens fonte e destino, respectivamente, da base 2. (e) e (f) Exemplos de ROIs alinhadas das imagens (c) e (d), respectivamente.}
+    \label{f.exemplo}
+\end{figure}
+
+
+\section{Como desenvolver o projeto?}
+
+Para desenvolver a primeira fase do projeto, vocês devem preencher os códigos das funções indicadas em project01.c. Essas funções são necessárias em três operações do programa principal: uma filtragem alternada sequencial envolvendo fechamento seguido de abertura morfológica, uma filtragem de fechamento de buracos (bacias) em objetos e uma erosão morfológica, respectivamente. A dilatação e a erosão morfológicas para imagens binárias deverão seguir os algoritmos~\ref{a.dilation} e~\ref{a.erosion}, respectivamente. Já o fechamento de buracos deverá seguir o algoritmo~\ref{a.closeholes}. \textbf{Esses algoritmos assumem que pixels de objeto possuem valor diferente de 0 (e.g., 1 ou 255) e pixels de fundo valor 0. Note que no caso do fechamento de buracos, ao conquistar um pixel $q$, este nunca estará na fila $Q$.} Além desses algoritmos, outras funções mais simples e auxiliares são indicadas para preenchimento no código do programa project01.c. Para avaliar se sua implementação está correta, vocês podem trocar sua função pela que está comentada no código do programa. Avaliem os resultados variando os hiperparâmetros dessas e outras funções do código, visando sempre isolar a maior porção possível contendo apenas a impressão digital. 
+
+Para a fase 2 do projeto, vocês devem utilizar o programa project02.c para gerar primeiro um arquivo csv com pares de ROIs alinhados para comparação e uma pasta com essas ROIs a partir de um arquivo csv de comparação e da pasta images\_02. O artigo do algoritmo de alinhamento está na pasta fingerprint. Vocês podem criar arquivos de comparação para treino, validação e teste, evitando repetir comparações entre eles. Um modelo pré-treinado em outra base está disponível na pasta models. As comparações poderão envolver pares de imagens do mesmo indivíduo (genuínas) ou pares de imagens de indivíduos distintos (impostoras). Procurem misturar de forma balanceada os casos de comparações genuínas e impostoras. O arquivo deltas.txt contém os hiperparâmetros para alinhamento entre as imagens fonte e destino do arquivo de comparações. Além dos deltas, as dimensões das ROIs podem ser modificadas para avaliar a qualidade do alinhamento. O programa project02.c gera também um arquivo texto com os scores (distâncias) obtidos, mas este arquivo não é utilizado no projeto. Na pasta scripts, vocês irão encontrar scripts Python para treinar, avaliar e executar a rede neural em pares de ROIs gerados por project02.c. Além dos hiperparâmetros do alinhamento, vocês devem tentar melhorar a arquitetura da rede neural e sua função de perda em siameseNN.py. Para facilitar a tarefa, vejam o relatório e os códigos na pasta fingerprint sobre aprendizado contrastivo.   
+
+
+ \begin{nicealgo}{a.dilation}
+ 	\naTITLE{Dilatação Morfológica}
+ 	\naPREAMBLE 
+ 	\naINPUT{Máscara binária $\hat{I}=(D_I,I)$, conjunto $S$ vazio ou com pixels de bordas \textbf{internas}, e raio de dilatação $\gamma$.} 
+ 	\naOUTPUT{Máscara dilatada $\hat{D}=(D_I,D)$ e conjunto $S$ com pixels de bordas \textbf{externas}.}  
+ 	\naAUX{Relações de Adjacência $A_{\sqrt{2}}$ e $A_1$, fila de prioridades $Q$, mapa de custos $C$, mapa de raizes $R$, variável $tmp$.}
+ 	\vspace{0.5cm}
+ 	\naBODY 
+ 	\na{\naFOREACH $p\in D_I$ \naDO $C(p)\leftarrow +\infty$ e  $D(p)\leftarrow I(p)$.}
+ 	\na{\naIF $S = \emptyset$ \naTHEN $S\leftarrow \{p\in D_I \mid I(p)\neq 0 \mbox{ e } \exists q\in A_1(p), I(q)=0 \}$.}
+ 	\naBEGIN{\naWHILE $S \neq \emptyset$ \naDO}
+ 	\na{Remova $p$ de $S$.}
+ 	\naEND{Atribua $C(p)\leftarrow 0$, $R(p)\leftarrow p$, e insira $p$ em $Q$.}
+ 	\naBEGIN{\naWHILE $Q\neq \emptyset$ \naDO}
+ 	\na{Remova $p$ de $Q$ tal que $p=arg\min_{\forall q\in Q} \{C(q)\}$.}
+ 	\naBEGIN{\naIF $C(p) \leq \gamma^2$ \naTHEN}
+ 	\na{Atribua $J(p) \leftarrow I(R(p))$.}
+ 	\na{\naFOREACH $q\in A_{\sqrt{2}}(p) \mid q\in D_I \mbox{ e } C(q) > C(p)$}
+ 	\naBEGIN{e $I(q)=0$ \naDO}
+ 	\na{Atribua $tmp \leftarrow \|q - R(p)\|^2$.}
+ 	\naBEGIN{\naIF $tmp < C(q)$ \naTHEN}
+ 	\na{\naIF $q\in Q$ \naTHEN Remova $q$ de $Q$.}
+ 	\na{$C(q) \leftarrow tmp$ e $R(q) \leftarrow R(p)$.}
+ 	\naENDN{3}{Insira $q$ em $Q$.}
+ 	\naEND{\naELSE Atribua $S \leftarrow S \cup \{p\}$.}
+ 	\na{\naRETURN $\hat{D}$ e $S$.}
+ \end{nicealgo}
+ 
+ \vspace{0.5cm}
+ 
+  \begin{nicealgo}{a.erosion}
+ 	\naTITLE{Erosão Morfológica}
+ 	\naPREAMBLE 
+ 	\naINPUT{Máscara binária $\hat{I}=(D_I,I)$, conjunto $S$ vazio ou com pixels de bordas \textbf{externas}, e raio de erosão $\gamma$.} 
+ 	\naOUTPUT{Máscara erodida $\hat{E}=(D_I,E)$ e conjunto $S$ com pixels de bordas \textbf{internas}.}  
+ 	\naAUX{Relações de Adjacência $A_{\sqrt{2}}$ e $A_1$, fila de prioridades $Q$, mapa de custos $C$, mapa de raizes $R$, variável $tmp$.}
+ 	\vspace{0.5cm}
+ 	\naBODY 
+ 	\na{\naFOREACH $p\in D_I$ \naDO $C(p)\leftarrow +\infty$ e $E(p)\leftarrow I(p)$.}
+ 	\na{\naIF $S = \emptyset$ \naTHEN $S\leftarrow \{p\in D_I \mid I(p)=0 \mbox{ e } \exists q\in A_1(p), I(q)\neq 0 \}$.}
+ 	\naBEGIN{\naWHILE $S \neq \emptyset$ \naDO}
+ 	\na{Remova $p$ de $S$.}
+ 	\naEND{Atribua $C(p)\leftarrow 0$, $R(p)\leftarrow p$, e insira $p$ em $Q$.}
+ 	\naBEGIN{\naWHILE $Q\neq \emptyset$ \naDO}
+ 	\na{Remova $p$ de $Q$ tal que $p=arg\min_{\forall q\in Q} \{C(q)\}$.}
+ 	\naBEGIN{\naIF $C(p) \leq \gamma^2$ \naTHEN}
+ 	\na{Atribua $J(p) \leftarrow I(R(p))$.}
+ 	\na{\naFOREACH $q\in A_{\sqrt{2}}(p) \mid q\in D_I, C(q) > C(p)$}
+ 	\naBEGIN{e $I(q)\neq 0$ \naDO}
+ 	\na{Atribua $tmp \leftarrow \|q - R(p)\|^2$.}
+ 	\naBEGIN{\naIF $tmp < C(q)$ \naTHEN}
+ 	\na{\naIF $q\in Q$ \naTHEN Remova $q$ de $Q$.}
+ 	\na{$C(q) \leftarrow tmp$ e $R(q) \leftarrow R(p)$.}
+ 	\naENDN{3}{Insira $q$ em $Q$.}
+ 	\naEND{\naELSE Atribua $S \leftarrow S \cup \{p\}$.}
+ 	\na{\naRETURN $\hat{E}$ e $S$.}
+ \end{nicealgo}
+ 
+ 
+ \begin{nicealgo}{a.closeholes}
+ 	\naTITLE{Fechamento de Bacias}
+ 	\naPREAMBLE 
+ 	\naINPUT{Imagem $\hat{I}=(D_I,I)$.} 
+ 	\naOUTPUT{Imagem com bacias fechadas $\hat{C}=(D_I,C)$.}  
+ 	\naAUX{Relação de Adjacência $A_{1}$, fila de prioridades $Q$, variável $tmp$.}
+ 	\vspace{0.5cm}
+ 	\naBODY 
+ 	\naBEGIN{\naFOREACH $p\in D_I$ \naDO}
+ 	\na{Faça $C(p)\leftarrow +\infty$}
+ 	\naBEGIN{\naFOREACH $q\in A_1(p)$ \naDO}
+ 	\na{\naIF $q \not\in D_I$ \naTHEN}
+ 	\naENDN{2}{Faça $C(p)\leftarrow I(p)$, insira $p$ em $Q$ e break.}
+ 	\naBEGIN{\naWHILE $Q\neq \emptyset$ \naDO}
+ 	\na{Remova $p$ de $Q$ tal que $p=arg\min_{\forall q\in Q} \{C(q)\}$.}
+ 	\na{\naFOREACH $q\in A_{1}(p) \mid q\in D_I e C(q) > C(p)$ \naDO}
+ 	\na{Atribua $tmp \leftarrow \max\{C(p),I(q)\}$.}
+ 	\naBEGIN{\naIF $tmp < C(q)$ \naTHEN}
+ 	\na{$C(q) \leftarrow tmp$.}
+ 	\naENDN{2}{Insira $q$ em $Q$.}
+ 	\na{\naRETURN $\hat{C}$.}
+ \end{nicealgo}
+ 
+
+
+\section{Como escrever os relatórios?}
+
+O formato dos relatórios segue o padrão descrito na página do
+curso. Lembrem-se de documentar os códigos e explicar no relatório
+todos os experimentos realizados, acrescentar tabelas com os
+resultados obtidos, discutir os resultados, e ilustrá-los com figuras.
+
+\section{Prazos.}
+
+\begin{enumerate}
+  \item Fase 1: 12/05/2022 (extração da ROI).
+  \item Fase 2: 26/05/2022 (alinhamento) e 12/07/2022 (rede neural).   
+\end{enumerate}
+
+
+\end{document}
