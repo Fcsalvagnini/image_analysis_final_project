@@ -32,10 +32,12 @@
 
 iftSet *MyObjectBorder(iftImage *bin)
 {
+   // Validate Adjacency relationship (According to professor Algorithm)
    iftAdjRel *A = iftCircular(sqrtf(2));
    iftSet *S=NULL;
    // Iterates over the image pixels
    for (size_t p=0; p <= bin->n; p++) {
+      // Only for border values (!= 0)
       if (bin->val[p] > 0) {
          iftVoxel u = iftGetVoxelCoord(bin, p);
          // Iterates over the adjacent matrix
@@ -88,14 +90,75 @@ iftSet *MyBackgroundBorder(iftImage *bin)
 
 iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 {
-   /* Creates cost matrix with all values as 0, and then
+   iftAdjRel *A = iftCircular(sqrtf(2));
+   int tmp = 0;
+   /* Creates cost and root matrix with all values as 0, and then
    set then all to INFINITY_INT*/
    iftImage *cost = iftCreateImageFromImage(bin);
+   iftImage *root = iftCreateImageFromImage(bin);
    iftSetImage(cost, IFT_INFINITY_INT);
+   iftSetImage(root, IFT_INFINITY_INT);
    iftImage *dilated_bin = iftCopyImage(bin);
-   printf("[0] Set size => %d\n", iftSetSize(*S));
-   *S = MyObjectBorder(bin);
-   printf("[1] Set size => %d\n", iftSetSize(*S));
+   // Creates the Queue
+   iftGQueue *Q=NULL;
+   // [TODO] 2 buckets because we have only two values of pixel (0 - ?255?) // Validate
+   // ??????????????????????
+   // Why the cost->val is necessary?
+   Q = iftCreateGQueue(2, bin->n, cost->val);
+
+   printf("[INFO] Starting Dilate Code\n");
+   // If SetSize is 0, then get object border
+   if (iftSetSize(*S) == 0) {
+      printf("[INFO] Creates ObjectBorder\n");
+      *S = MyObjectBorder(bin);
+   }
+
+   // Empties the S set, correctly setting the Cost and R matrix
+   // [TODO] Optimize it
+   while (iftSetSize(*S) != 0) {
+      int p = iftRemoveSet(S);
+      cost->val[p] = 0;
+      root->val[p] = p;
+      iftInsertGQueue(&Q, p);
+   }
+   printf("[INFO] Empty Set\n");
+
+   while (!iftEmptyGQueue(Q))
+   {
+      // Gets the value of less Cost
+      int p = iftRemoveGQueue(Q);
+
+      // [TODO] Add padding to the input image
+      if (cost->val[p] <= pow(radius, 2)) {
+         dilated_bin->val[p] = bin->val[root->val[p]];
+         // Iterates over the adjacent matrix
+         iftVoxel u = iftGetVoxelCoord(bin, p);
+         for (size_t i=1; i < A->n; i++) {
+            iftVoxel v = iftGetAdjacentVoxel(A, u, i);
+            if (iftValidVoxel(bin, v)) {
+               int q = iftGetVoxelIndex(bin, v);
+               if ( (cost->val[q] > cost->val[p]) && bin->val[q] == 0) {
+                  // Validate it
+                  tmp = abs(q - root->val[p]);
+                  if (tmp < cost->val[q]) {
+                     // Verifies if its in the Queue and removes it
+                     if (cost->val[q] != IFT_INFINITY_INT) {
+                        iftRemoveGQueueElem(Q, q);
+                     }
+                     cost->val[q] = tmp;
+                     root->val[q] = tmp;
+                     iftInsertGQueue(&Q, q);
+                  }
+               }
+            }
+         }
+      }
+      else {
+         iftInsertSet(S, p);
+      }
+   }
+
+   printf("Executed Dilate Bin\n");
 
    return dilated_bin;
 }
@@ -147,6 +210,7 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 
 int main(int argc, char *argv[])
 {
+   printf("[INFO] Starting code execution\n");
    timer *tstart=NULL;
    char   filename[200];
 
@@ -168,13 +232,14 @@ int main(int argc, char *argv[])
    }
 
    tstart = iftTic();
-
+   printf("[INFO] Reading input Images\n");
    iftFileSet *fs   = iftLoadFileSetFromDirBySuffix(argv[1],".png", 1);
+   printf("[INFO] Read input Images\n");
    int nimages      = fs->n;
    char *out_dir    = argv[2];
    iftMakeDir(out_dir);
    iftAdjRel *A     = iftCircular(3.5), *B = iftCircular(1.5);
-   for (int i=0; i < nimages; i++) {
+   for (int i=0; i < 5; i++) {
       iftSet *S = NULL;
       char *basename = iftFilename(fs->files[i]->path,".png");
       iftImage *orig = iftReadImageByExt(fs->files[i]->path);
@@ -185,9 +250,8 @@ int main(int argc, char *argv[])
       /* remove noise components from the background */
       iftImage *aux2 = iftSelectCompAboveArea(aux1,B,100);
       iftDestroyImage(&aux1);
-      printf("[2] Set size => %d\n", iftSetSize(S));
+      printf("[INFO] Starting execution of My Dilate Bin\n");
       aux1 = MyDilateBin(aux2, &S, 15.0);
-      printf("[3] Set size => %d\n", iftSetSize(S));
 
       /* apply morphological filtering to make the fingerprint the
       largest component: this operation must add frame and remove it
@@ -216,7 +280,7 @@ int main(int argc, char *argv[])
       //  aux1              = iftExtractROI(norm,bb);
 
       sprintf(filename,"%s/%s.png",out_dir,basename);
-      //  iftWriteImageByExt(aux1,filename);
+      iftWriteImageByExt(aux1,filename);
       iftDestroyImage(&aux1);
       iftDestroyImage(&aux2);
       iftDestroyImage(&orig);
