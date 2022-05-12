@@ -93,13 +93,15 @@ iftSet *MyBackgroundBorder(iftImage *bin)
 /* it dilates objects */
 iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 {
+   iftImage *dilated_bin = iftCopyImage(bin);
+
    // Adjacency relation of neighbourhood 8
    iftAdjRel *A = iftCircular(sqrtf(2));
    int tmp = 0;
    iftGQueue *Q=NULL;
 
-   /* Creates cost and root matrix with all values as 0, and then
-   set then all to INFINITY_INT*/
+   // /* Creates cost and root matrix with all values as 0, and then
+   // set then all to INFINITY_INT*/
    iftImage *cost = iftCreateImageFromImage(bin);
    iftImage *root = iftCreateImageFromImage(bin);
    iftSetImage(cost, IFT_INFINITY_INT);
@@ -109,7 +111,7 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
    Q = iftCreateGQueue(256, bin->n, cost->val);
 
    // If SetSize is 0, then get object border
-   if (iftSetSize(*S) == 0) {
+   if (*S == NULL) {
       *S = MyObjectBorder(bin);
    }
 
@@ -121,14 +123,12 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
       iftInsertGQueue(&Q, p);
    }
 
-   iftImage *dilated_bin = iftCopyImage(bin);
-
    while (!iftEmptyGQueue(Q))
    {
       int p = iftRemoveGQueue(Q);
 
       if (cost->val[p] <= pow(radius, 2)) {
-         dilated_bin->val[p] = 255;
+         dilated_bin->val[p] = bin->val[root->val[p]];
          iftVoxel edge_voxel = iftGetVoxelCoord(bin, root->val[p]);
          // Iterates over the adjacent matrix
          iftVoxel u = iftGetVoxelCoord(bin, p);
@@ -141,7 +141,6 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
                   tmp = pow(edge_voxel.x - v.x, 2) + pow(edge_voxel.y - v.y, 2);
                   if (tmp < cost->val[q]) {
                      // Verifies if its in the Queue and removes it
-                     // if (cost->val[q] != IFT_INFINITY_INT) {
                      if (Q->L.elem[q].color == IFT_GRAY) {
                         iftRemoveGQueueElem(Q, q);
                      }
@@ -168,12 +167,79 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 
 /* it erodes objects */
 
-// iftImage *MyErodeBin(iftImage *bin, iftSet **S, float radius)
-// {
+iftImage *MyErodeBin(iftImage *bin, iftSet **S, float radius)
+{
+   iftImage *eroded_bin = iftCopyImage(bin);
 
+   // Adjacency relation of neighbourhood 8
+   iftAdjRel *A = iftCircular(sqrtf(2));
+   int tmp = 0;
+   iftGQueue *Q=NULL;
 
+   // /* Creates cost and root matrix with all values as 0, and then
+   // set then all to INFINITY_INT*/
+   iftImage *cost = iftCreateImageFromImage(bin);
+   iftImage *root = iftCreateImageFromImage(bin);
+   iftSetImage(cost, IFT_INFINITY_INT);
+   iftSetImage(root, IFT_INFINITY_INT);
 
-// }
+   // [TODO] Optimize the number of buckets to avoid extra allocations
+   Q = iftCreateGQueue(256, bin->n, cost->val);
+
+   // If SetSize is 0, then get object border
+   if (*S == NULL) {
+      *S = MyBackgroundBorder(bin);
+   }
+
+   // Empties the S set, correctly setting the Cost and R matrix
+   while (*S != NULL) {
+      int p = iftRemoveSet(S);
+      cost->val[p] = 0;
+      root->val[p] = p;
+      iftInsertGQueue(&Q, p);
+   }
+
+   while (!iftEmptyGQueue(Q))
+   {
+      int p = iftRemoveGQueue(Q);
+
+      if (cost->val[p] <= pow(radius, 2)) {
+         eroded_bin->val[p] = bin->val[root->val[p]];
+         iftVoxel edge_voxel = iftGetVoxelCoord(bin, root->val[p]);
+         // Iterates over the adjacent matrix
+         iftVoxel u = iftGetVoxelCoord(bin, p);
+         for (size_t i=1; i < A->n; i++) {
+            iftVoxel v = iftGetAdjacentVoxel(A, u, i);
+            if (iftValidVoxel(bin, v)) {
+               int q = iftGetVoxelIndex(bin, v);
+               if ( (cost->val[q] > cost->val[p]) && bin->val[q] != 0) {
+                  // Computes the new cost value regarding the edge voxel
+                  tmp = pow(edge_voxel.x - v.x, 2) + pow(edge_voxel.y - v.y, 2);
+                  if (tmp < cost->val[q]) {
+                     // Verifies if its in the Queue and removes it
+                     if (Q->L.elem[q].color == IFT_GRAY) {
+                        iftRemoveGQueueElem(Q, q);
+                     }
+                     cost->val[q] = tmp;
+                     root->val[q] = root->val[p];
+                     iftInsertGQueue(&Q, q);
+                  }
+               }
+            }
+         }
+      }
+      else {
+         iftInsertSet(S, p);
+      }
+   }
+
+   iftDestroyImage(&cost);
+   iftDestroyImage(&root);
+   iftDestroyAdjRel(&A);
+   iftDestroyGQueue(&Q);
+
+   return eroded_bin;
+}
 
 /* it executes dilation followed by erosion */
 
@@ -240,7 +306,7 @@ int main(int argc, char *argv[])
    char *out_dir = argv[2];
    iftMakeDir(out_dir);
    iftAdjRel *A = iftCircular(3.5), *B = iftCircular(1.5);
-   for (int i=0; i < 5; i++) {
+   for (int i=0; i < 7; i++) {
       iftSet *S = NULL;
       char *img_basename = iftFilename(fs->files[i]->path,".png");
       iftImage *orig = iftReadImageByExt(fs->files[i]->path);
@@ -253,9 +319,10 @@ int main(int argc, char *argv[])
       iftDestroyImage(&aux1);
 
       // Space to test implementations
-      // Add border and removes it after
-      aux1 = MyDilateBin(aux2, &S, 15.0);
-      // aux1 = iftDilateBin(aux2, &S, 15.0);
+      // aux1 = MyDilateBin(aux2, &S, 15.0);
+      // aux1 = MyErodeBin(aux2, &S, 2.0);
+      // aux1 = iftErodeBin(aux2, &S, 2.0);
+      aux1 = iftDilateBin(aux2, &S, 15.0);
       iftDestroyImage(&aux2);
       //
 
