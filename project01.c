@@ -244,9 +244,9 @@ iftImage *MyErodeBin(iftImage *bin, iftSet **S, float radius)
 /* it executes dilation followed by erosion */
 iftImage *MyCloseBin(iftImage *bin, float radius)
 {
-   iftSet *S = NULL;
    /* Since its a dilatation followed by a erosion, would be necessary to
    padd the input image*/
+   iftSet *S = NULL;
    iftImage *padded_bin = iftAddFrame(bin, radius, 0);
    iftImage *dilated_padded_bin = MyDilateBin(padded_bin, &S, radius);
    iftImage *eroded_padded_bin = MyErodeBin(dilated_padded_bin, &S, radius);
@@ -262,13 +262,23 @@ iftImage *MyCloseBin(iftImage *bin, float radius)
 }
 
 /* it executes erosion followed by dilation */
+iftImage *MyOpenBin(iftImage *bin, float radius)
+{
+   // Since the dilatation is the last operation, the padding is not necessary.
+   iftSet *S = NULL;
+   iftImage *padded_bin = iftAddFrame(bin, radius, 0);
+   iftImage *eroded_padded_bin = MyErodeBin(padded_bin, &S, radius);
+   iftImage *dilated_padded_bin = MyDilateBin(eroded_padded_bin, &S, radius);
 
-// iftImage *MyOpenBin(iftImage *bin, float radius)
-// {
+   iftImage *opened_bin = iftRemFrame(dilated_padded_bin, radius);
 
+   iftDestroyImage(&padded_bin);
+   iftDestroyImage(&eroded_padded_bin);
+   iftDestroyImage(&dilated_padded_bin);
+   iftDestroySet(&S);
 
-
-// }
+   return opened_bin;
+}
 
 /* it executes closing followed by opening */
 
@@ -334,7 +344,9 @@ int main(int argc, char *argv[])
       // aux1 = MyErodeBin(aux2, &S, 2.0);
       // aux1 = iftErodeBin(aux2, &S, 2.0);
       // aux1 = iftDilateBin(aux2, &S, 15.0);
-      aux1 = MyCloseBin(aux2, 15.0);
+      // aux1 = MyCloseBin(aux2, 15.0);
+      aux1 = MyOpenBin(aux2, 3.0);
+      // aux1 = iftOpenBin(aux2, 3.0);
       // aux1 = iftCloseBin(aux2, 15.0);
       iftDestroyImage(&aux2);
       //
