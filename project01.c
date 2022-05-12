@@ -98,23 +98,19 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
    int tmp = 0;
    iftGQueue *Q=NULL;
 
-   /* Adds padding to the input image, to deal with dilatations close
-   to the image borders*/
-   iftImage *padded_bin = iftAddFrame(bin, radius, 0);
-
    /* Creates cost and root matrix with all values as 0, and then
    set then all to INFINITY_INT*/
-   iftImage *cost = iftCreateImageFromImage(padded_bin);
-   iftImage *root = iftCreateImageFromImage(padded_bin);
+   iftImage *cost = iftCreateImageFromImage(bin);
+   iftImage *root = iftCreateImageFromImage(bin);
    iftSetImage(cost, IFT_INFINITY_INT);
    iftSetImage(root, IFT_INFINITY_INT);
 
    // [TODO] Optimize the number of buckets to avoid extra allocations
-   Q = iftCreateGQueue(256, padded_bin->n, cost->val);
+   Q = iftCreateGQueue(256, bin->n, cost->val);
 
    // If SetSize is 0, then get object border
    if (iftSetSize(*S) == 0) {
-      *S = MyObjectBorder(padded_bin);
+      *S = MyObjectBorder(bin);
    }
 
    // Empties the S set, correctly setting the Cost and R matrix
@@ -125,20 +121,22 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
       iftInsertGQueue(&Q, p);
    }
 
+   iftImage *dilated_bin = iftCopyImage(bin);
+
    while (!iftEmptyGQueue(Q))
    {
       int p = iftRemoveGQueue(Q);
 
       if (cost->val[p] <= pow(radius, 2)) {
-         padded_bin->val[p] = 255;
-         iftVoxel edge_voxel = iftGetVoxelCoord(padded_bin, root->val[p]);
+         dilated_bin->val[p] = 255;
+         iftVoxel edge_voxel = iftGetVoxelCoord(bin, root->val[p]);
          // Iterates over the adjacent matrix
-         iftVoxel u = iftGetVoxelCoord(padded_bin, p);
+         iftVoxel u = iftGetVoxelCoord(bin, p);
          for (size_t i=1; i < A->n; i++) {
             iftVoxel v = iftGetAdjacentVoxel(A, u, i);
-            if (iftValidVoxel(padded_bin, v)) {
-               int q = iftGetVoxelIndex(padded_bin, v);
-               if ( (cost->val[q] > cost->val[p]) && padded_bin->val[q] == 0) {
+            if (iftValidVoxel(bin, v)) {
+               int q = iftGetVoxelIndex(bin, v);
+               if ( (cost->val[q] > cost->val[p]) && bin->val[q] == 0) {
                   // Computes the new cost value regarding the edge voxel
                   tmp = pow(edge_voxel.x - v.x, 2) + pow(edge_voxel.y - v.y, 2);
                   if (tmp < cost->val[q]) {
@@ -160,12 +158,8 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
       }
    }
 
-   // Removes padding from image
-   iftImage *dilated_bin = iftRemFrame(padded_bin, radius);
-
    iftDestroyImage(&cost);
    iftDestroyImage(&root);
-   iftDestroyImage(&padded_bin);
    iftDestroyAdjRel(&A);
    iftDestroyGQueue(&Q);
 
