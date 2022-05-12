@@ -244,14 +244,12 @@ iftImage *MyErodeBin(iftImage *bin, iftSet **S, float radius)
 /* it executes dilation followed by erosion */
 iftImage *MyCloseBin(iftImage *bin, float radius)
 {
-   /* Since its a dilatation followed by a erosion, would be necessary to
-   padd the input image*/
    iftSet *S = NULL;
-   iftImage *padded_bin = iftAddFrame(bin, radius, 0);
+   iftImage *padded_bin = iftAddFrame(bin, radius + 2, 0);
    iftImage *dilated_padded_bin = MyDilateBin(padded_bin, &S, radius);
    iftImage *eroded_padded_bin = MyErodeBin(dilated_padded_bin, &S, radius);
 
-   iftImage *closed_bin = iftRemFrame(eroded_padded_bin, radius);
+   iftImage *closed_bin = iftRemFrame(eroded_padded_bin, radius + 2);
 
    iftDestroyImage(&padded_bin);
    iftDestroyImage(&dilated_padded_bin);
@@ -264,13 +262,12 @@ iftImage *MyCloseBin(iftImage *bin, float radius)
 /* it executes erosion followed by dilation */
 iftImage *MyOpenBin(iftImage *bin, float radius)
 {
-   // Since the dilatation is the last operation, the padding is not necessary.
    iftSet *S = NULL;
-   iftImage *padded_bin = iftAddFrame(bin, radius, 0);
+   iftImage *padded_bin = iftAddFrame(bin, radius + 2, 0);
    iftImage *eroded_padded_bin = MyErodeBin(padded_bin, &S, radius);
    iftImage *dilated_padded_bin = MyDilateBin(eroded_padded_bin, &S, radius);
 
-   iftImage *opened_bin = iftRemFrame(dilated_padded_bin, radius);
+   iftImage *opened_bin = iftRemFrame(dilated_padded_bin, radius + 2);
 
    iftDestroyImage(&padded_bin);
    iftDestroyImage(&eroded_padded_bin);
@@ -281,13 +278,32 @@ iftImage *MyOpenBin(iftImage *bin, float radius)
 }
 
 /* it executes closing followed by opening */
+iftImage *MyAsfCOBin(iftImage *bin, float radius)
+{
+   /* As it comprises a Closing Followed by an Opening, we have the following
+   ops:
+   - Closing: Dilation followed by erosion
+   - Opening: Erosion followed by Dilation
+   We could then summarize it as:
+      - Dilate(radius) + Erosion(2*radius) + Dilate(radius)
+   */
+   iftSet *S = NULL;
+   iftImage *padded_bin = iftAddFrame(bin, radius + 2, 0);
 
-// iftImage *MyAsfCOBin(iftImage *bin, float radius)
-// {
+   iftImage *dilated_padded_bin = MyDilateBin(padded_bin, &S, radius);
+   iftImage *eroded_padded_bin = MyErodeBin(dilated_padded_bin, &S, 2*radius);
+   iftDestroyImage(&dilated_padded_bin);
+   dilated_padded_bin = MyDilateBin(eroded_padded_bin, &S, radius);
 
+   iftImage *closed_opened_bin = iftRemFrame(dilated_padded_bin, radius + 2);
 
+   iftDestroyImage(&padded_bin);
+   iftDestroyImage(&dilated_padded_bin);
+   iftDestroyImage(&eroded_padded_bin);
+   iftDestroySet(&S);
 
-// }
+   return closed_opened_bin;
+}
 
 /* it closes holes in objects */
 
@@ -345,7 +361,9 @@ int main(int argc, char *argv[])
       // aux1 = iftErodeBin(aux2, &S, 2.0);
       // aux1 = iftDilateBin(aux2, &S, 15.0);
       // aux1 = MyCloseBin(aux2, 15.0);
-      aux1 = MyOpenBin(aux2, 3.0);
+      // aux1 = MyOpenBin(aux2, 3.0);
+      // aux1 = MyAsfCOBin(aux2, 5);
+      aux1 = iftAsfCOBin(aux2, 5);
       // aux1 = iftOpenBin(aux2, 3.0);
       // aux1 = iftCloseBin(aux2, 15.0);
       iftDestroyImage(&aux2);
