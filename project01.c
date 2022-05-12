@@ -32,8 +32,8 @@
 
 iftSet *MyObjectBorder(iftImage *bin)
 {
-   // Validate Adjacency relationship (According to professor Algorithm)
-   iftAdjRel *A = iftCircular(sqrtf(2));
+   // Adjacency relation of neighbourhood 4
+   iftAdjRel *A = iftCircular(1);
    iftSet *S=NULL;
    // Iterates over the image pixels
    for (size_t p=0; p <= bin->n; p++) {
@@ -55,14 +55,16 @@ iftSet *MyObjectBorder(iftImage *bin)
       }
    }
 
+   iftDestroyAdjRel(&A);
+
    return S;
 }
 
 /* it returns a set with external border pixels */
-
 iftSet *MyBackgroundBorder(iftImage *bin)
 {
-   iftAdjRel *A = iftCircular(sqrtf(2));
+   // Adjacency relation of neighbourhood 4
+   iftAdjRel *A = iftCircular(1);
    iftSet *S=NULL;
    // Iterates over the image pixels
    for (size_t p=0; p <= bin->n; p++) {
@@ -83,70 +85,70 @@ iftSet *MyBackgroundBorder(iftImage *bin)
       }
    }
 
+   iftDestroyAdjRel(&A);
+
    return S;
 }
 
 /* it dilates objects */
-
 iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 {
+   // Adjacency relation of neighbourhood 8
    iftAdjRel *A = iftCircular(sqrtf(2));
    int tmp = 0;
+   iftGQueue *Q=NULL;
+
+   /* Adds padding to the input image, to deal with dilatations close
+   to the image borders*/
+   iftImage *padded_bin = iftAddFrame(bin, radius, 0);
+
    /* Creates cost and root matrix with all values as 0, and then
    set then all to INFINITY_INT*/
-   iftImage *cost = iftCreateImageFromImage(bin);
-   iftImage *root = iftCreateImageFromImage(bin);
+   iftImage *cost = iftCreateImageFromImage(padded_bin);
+   iftImage *root = iftCreateImageFromImage(padded_bin);
    iftSetImage(cost, IFT_INFINITY_INT);
    iftSetImage(root, IFT_INFINITY_INT);
-   iftImage *dilated_bin = iftCopyImage(bin);
-   // Creates the Queue
-   iftGQueue *Q=NULL;
-   // [TODO] 2 buckets because we have only two values of pixel (0 - ?255?) // Validate
-   // ??????????????????????
-   // Why the cost->val is necessary?
-   Q = iftCreateGQueue(2, bin->n, cost->val);
 
-   printf("[INFO] Starting Dilate Code\n");
+   // [TODO] Optimize the number of buckets to avoid extra allocations
+   Q = iftCreateGQueue(256, padded_bin->n, cost->val);
+
    // If SetSize is 0, then get object border
    if (iftSetSize(*S) == 0) {
-      printf("[INFO] Creates ObjectBorder\n");
-      *S = MyObjectBorder(bin);
+      *S = MyObjectBorder(padded_bin);
    }
 
    // Empties the S set, correctly setting the Cost and R matrix
-   // [TODO] Optimize it
-   while (iftSetSize(*S) != 0) {
+   while (*S != NULL) {
       int p = iftRemoveSet(S);
       cost->val[p] = 0;
       root->val[p] = p;
       iftInsertGQueue(&Q, p);
    }
-   printf("[INFO] Empty Set\n");
 
    while (!iftEmptyGQueue(Q))
    {
-      // Gets the value of less Cost
       int p = iftRemoveGQueue(Q);
 
-      // [TODO] Add padding to the input image
       if (cost->val[p] <= pow(radius, 2)) {
-         dilated_bin->val[p] = bin->val[root->val[p]];
+         padded_bin->val[p] = 255;
+         iftVoxel edge_voxel = iftGetVoxelCoord(padded_bin, root->val[p]);
          // Iterates over the adjacent matrix
-         iftVoxel u = iftGetVoxelCoord(bin, p);
+         iftVoxel u = iftGetVoxelCoord(padded_bin, p);
          for (size_t i=1; i < A->n; i++) {
             iftVoxel v = iftGetAdjacentVoxel(A, u, i);
-            if (iftValidVoxel(bin, v)) {
-               int q = iftGetVoxelIndex(bin, v);
-               if ( (cost->val[q] > cost->val[p]) && bin->val[q] == 0) {
-                  // Validate it
-                  tmp = abs(q - root->val[p]);
+            if (iftValidVoxel(padded_bin, v)) {
+               int q = iftGetVoxelIndex(padded_bin, v);
+               if ( (cost->val[q] > cost->val[p]) && padded_bin->val[q] == 0) {
+                  // Computes the new cost value regarding the edge voxel
+                  tmp = pow(edge_voxel.x - v.x, 2) + pow(edge_voxel.y - v.y, 2);
                   if (tmp < cost->val[q]) {
                      // Verifies if its in the Queue and removes it
-                     if (cost->val[q] != IFT_INFINITY_INT) {
+                     // if (cost->val[q] != IFT_INFINITY_INT) {
+                     if (Q->L.elem[q].color == IFT_GRAY) {
                         iftRemoveGQueueElem(Q, q);
                      }
                      cost->val[q] = tmp;
-                     root->val[q] = tmp;
+                     root->val[q] = root->val[p];
                      iftInsertGQueue(&Q, q);
                   }
                }
@@ -158,7 +160,14 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
       }
    }
 
-   printf("Executed Dilate Bin\n");
+   // Removes padding from image
+   iftImage *dilated_bin = iftRemFrame(padded_bin, radius);
+
+   iftDestroyImage(&cost);
+   iftDestroyImage(&root);
+   iftDestroyImage(&padded_bin);
+   iftDestroyAdjRel(&A);
+   iftDestroyGQueue(&Q);
 
    return dilated_bin;
 }
@@ -211,7 +220,7 @@ iftImage *MyDilateBin(iftImage *bin, iftSet **S, float radius)
 int main(int argc, char *argv[])
 {
    printf("[INFO] Starting code execution\n");
-   timer *tstart=NULL;
+   timer *t_start=iftTic();
    char   filename[200];
 
    /*--------------------------------------------------------*/
@@ -231,17 +240,15 @@ int main(int argc, char *argv[])
       exit(0);
    }
 
-   tstart = iftTic();
-   printf("[INFO] Reading input Images\n");
-   iftFileSet *fs   = iftLoadFileSetFromDirBySuffix(argv[1],".png", 1);
-   printf("[INFO] Read input Images\n");
-   int nimages      = fs->n;
-   char *out_dir    = argv[2];
+   printf("[INFO] Reading input Images:\n");
+   iftFileSet *fs = iftLoadFileSetFromDirBySuffix(argv[1],".png", 1);
+   int nimages = fs->n;
+   char *out_dir = argv[2];
    iftMakeDir(out_dir);
-   iftAdjRel *A     = iftCircular(3.5), *B = iftCircular(1.5);
+   iftAdjRel *A = iftCircular(3.5), *B = iftCircular(1.5);
    for (int i=0; i < 5; i++) {
       iftSet *S = NULL;
-      char *basename = iftFilename(fs->files[i]->path,".png");
+      char *img_basename = iftFilename(fs->files[i]->path,".png");
       iftImage *orig = iftReadImageByExt(fs->files[i]->path);
       /* normalize  image */
       iftImage *norm = iftNormalize(orig,0,255);
@@ -250,43 +257,48 @@ int main(int argc, char *argv[])
       /* remove noise components from the background */
       iftImage *aux2 = iftSelectCompAboveArea(aux1,B,100);
       iftDestroyImage(&aux1);
-      printf("[INFO] Starting execution of My Dilate Bin\n");
+
+      // Space to test implementations
+      // Add border and removes it after
       aux1 = MyDilateBin(aux2, &S, 15.0);
+      // aux1 = iftDilateBin(aux2, &S, 15.0);
+      iftDestroyImage(&aux2);
+      //
 
       /* apply morphological filtering to make the fingerprint the
       largest component: this operation must add frame and remove it
       afterwards.
       */
-      //  aux1           = MyAsfCOBin(aux2,15.0);//iftAsfCOBin(aux2,15.0);
-      //  iftDestroyImage(&aux2);
-      //  /* close holes inside the components to allow subsequent erosion
-      //     from the external borders only */
-      //  aux2           = MyCloseBasins(aux1); //iftCloseBasins(aux1,NULL,NULL);
-      //  iftDestroyImage(&aux1);
-      //  /* erode components and select the largest one to estimate its
-      //     center as close as possible to the center of the fingerprint */
-      //  iftSet *S = NULL;
+      // aux1           = MyAsfCOBin(aux2,15.0);//iftAsfCOBin(aux2,15.0);
+      // iftDestroyImage(&aux2);
+      /* close holes inside the components to allow subsequent erosion
+      from the external borders only */
+      // aux2           = MyCloseBasins(aux1); //iftCloseBasins(aux1,NULL,NULL);
+      // iftDestroyImage(&aux1);
+      /* erode components and select the largest one to estimate its
+      center as close as possible to the center of the fingerprint */
+      // iftSet *S = NULL;
       //  aux1           = MyErodeBin(aux2,&S,30.0);//iftErodeBin(aux2,&S,30.0);
-      //  iftDestroySet(&S);
-      //  iftDestroyImage(&aux2);
+      // iftDestroySet(&S);
+      // iftDestroyImage(&aux2);
       //  aux2           = iftSelectLargestComp(aux1,B);
 
-      //  /* crop the normalized image by the minimum bounding box of the
+      /* crop the normalized image by the minimum bounding box of the
       //     resulting mask (largest component) */
 
-      //  iftDestroyImage(&aux1);
-      //  iftVoxel pos;
-      //  iftBoundingBox bb = iftMinBoundingBox(aux2, &pos);
-      //  aux1              = iftExtractROI(norm,bb);
+      // iftDestroyImage(&aux1);
+      // iftVoxel pos;
+      // iftBoundingBox bb = iftMinBoundingBox(aux2, &pos);
+      // aux1              = iftExtractROI(norm,bb);
 
-      sprintf(filename,"%s/%s.png",out_dir,basename);
+      sprintf(filename,"%s/%s.png",out_dir,img_basename);
       iftWriteImageByExt(aux1,filename);
-      iftDestroyImage(&aux1);
-      iftDestroyImage(&aux2);
       iftDestroyImage(&orig);
       iftDestroyImage(&norm);
+      iftDestroyImage(&aux1);
+      iftDestroyImage(&aux2);
       iftDestroySet(&S);
-      iftFree(basename);
+      iftFree(img_basename);
       printf("Processed %d/%d images\n",i+1,nimages);
    }
 
@@ -294,8 +306,11 @@ int main(int argc, char *argv[])
   iftDestroyAdjRel(&A);
   iftDestroyAdjRel(&B);
 
-  puts("\nDone...");
-  puts(iftFormattedTime(iftCompTime(tstart, iftToc())));
+   timer *t_end=iftToc();
+   char *formatted_time = iftFormattedTime(iftCompTime(t_start, t_end));
+   puts("\nDone...");
+   puts(formatted_time);
+   iftFree(formatted_time);
 
   /* ---------------------------------------------------------- */
 
@@ -307,11 +322,3 @@ int main(int argc, char *argv[])
 
   return 0;
 }
-
-
-
-
-
-
-
-
