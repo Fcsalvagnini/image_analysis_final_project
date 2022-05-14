@@ -9,7 +9,7 @@ def df2dict(df):
     return df.set_index('file').T.to_dict('dict')
 
 def retrieve_bbox(img_dict: dict):
-    return list(img_dict.values)
+    return list(img_dict.values())
 
 def iou(gt:dict, ift:dict, csv_iou='iou_fp.csv'):
     print('[INFO] Calculanting IoU')
@@ -28,7 +28,7 @@ def iou(gt:dict, ift:dict, csv_iou='iou_fp.csv'):
         igt_bboxAA = (xmax_gt - xmin_gt + 1) * (ymax_gt - ymin_gt + 1) 
 
         _iou = iA / float(gt_bboxAA + igt_bboxAA - iA)
-        _data = ['img': key, 'iou': _iou]
+        _data = {'img': key, 'iou': _iou}
         data.append(_data)
 
     print(f'[INFO] Generating IoU csv -> {csv_iou}')
@@ -36,8 +36,8 @@ def iou(gt:dict, ift:dict, csv_iou='iou_fp.csv'):
     df_iou.to_csv(csv_iou, index_label=False)
 
 def main(gt_csv, ift_csv):
-    df_gt, df_ift = read_csv(gt_csv), None #read_csv(ift_csv)
-    dict_gt, dict_ift = df2dict(df_gt), None #df2dict(df_ift)
+    df_gt, df_ift = read_csv(gt_csv), read_csv(ift_csv)
+    dict_gt, dict_ift = df2dict(df_gt), df2dict(df_ift)
     
     iou(dict_gt, dict_ift)
 
