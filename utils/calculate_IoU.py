@@ -9,7 +9,7 @@ def df2dict(df):
     return df.set_index('file').T.to_dict('dict')
 
 def retrieve_bbox(img_dict: dict):
-    return list(img_dict.values)[3::]
+    return list(img_dict.values)
 
 def iou(gt:dict, ift:dict, csv_iou='iou_fp.csv'):
     print('[INFO] Calculanting IoU')
