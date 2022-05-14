@@ -22,28 +22,46 @@
 
 
 /* it returns pixels at the border of the image */
+iftSet *MyImageBorder(iftImage *bin)
+{
+   // Adjacency relation of neighbourhood 4
+   iftAdjRel *A = iftCircular(1);
+   iftSet *S=NULL;
+   // Iterates over the image pixels
+   for (size_t p=0; p < bin->n; p++) {
+      iftVoxel u = iftGetVoxelCoord(bin, p);
+      // Iterates over the adjacent matrix
+      for (size_t i=1; i < A->n; i++) {
+         iftVoxel v = iftGetAdjacentVoxel(A, u, i);
+         /* Verify if its a valid adjacent Voxel. If not, the pixel p is at
+         image border */
+         if (!iftValidVoxel(bin, v)) {
+            iftInsertSet(&S, p);
+            break;
+         }
+      }
+   }
 
-// iftSet *MyImageBorder(iftImage *bin)
-// {
+   iftDestroyAdjRel(&A);
 
-// }
+   return S;
+}
 
 /* it returns a set with internal border pixels */
-
 iftSet *MyObjectBorder(iftImage *bin)
 {
    // Adjacency relation of neighbourhood 4
    iftAdjRel *A = iftCircular(1);
    iftSet *S=NULL;
    // Iterates over the image pixels
-   for (size_t p=0; p <= bin->n; p++) {
+   for (size_t p=0; p < bin->n; p++) {
       // Only for border values (!= 0)
       if (bin->val[p] > 0) {
          iftVoxel u = iftGetVoxelCoord(bin, p);
          // Iterates over the adjacent matrix
          for (size_t i=1; i < A->n; i++) {
             iftVoxel v = iftGetAdjacentVoxel(A, u, i);
-            // Verfifies if its a valid Voxel (To avoid memory dump)
+            // Verifies if its a valid Voxel (To avoid memory dump)
             if (iftValidVoxel(bin, v)) {
                int q = iftGetVoxelIndex(bin, v);
                if (bin->val[q] == 0) {
@@ -67,7 +85,7 @@ iftSet *MyBackgroundBorder(iftImage *bin)
    iftAdjRel *A = iftCircular(1);
    iftSet *S=NULL;
    // Iterates over the image pixels
-   for (size_t p=0; p <= bin->n; p++) {
+   for (size_t p=0; p < bin->n; p++) {
       if (bin->val[p] == 0) {
          iftVoxel u = iftGetVoxelCoord(bin, p);
          // Iterates over the adjacent matrix
@@ -306,13 +324,47 @@ iftImage *MyAsfCOBin(iftImage *bin, float radius)
 }
 
 /* it closes holes in objects */
+iftImage *MyCloseBasins(iftImage *bin)
+{
+   iftSet *S = MyImageBorder(bin);
+   iftAdjRel *A = iftCircular(1);
+   iftGQueue *Q = NULL;
+   int tmp = 0;
+   iftImage *closed_basins = iftCreateImageFromImage(bin);
+   iftSetImage(closed_basins, IFT_INFINITY_INT);
+   Q = iftCreateGQueue(256, bin->n, closed_basins->val);
 
-// iftImage *MyCloseBasins(iftImage *bin)
-// {
+   while (S != NULL) {
+      int p = iftRemoveSet(&S);
+      closed_basins->val[p] = bin->val[p];
+      iftInsertGQueue(&Q, p);
+   }
 
+   while (!iftEmptyGQueue(Q))
+   {
+      int p = iftRemoveGQueue(Q);
+      iftVoxel u = iftGetVoxelCoord(bin, p);
+      for (size_t i=1; i < A->n; i++) {
+         iftVoxel v = iftGetAdjacentVoxel(A, u, i);
+         if (iftValidVoxel(bin, v)) {
+            int q = iftGetVoxelIndex(bin, v);
+            if (closed_basins->val[q] > closed_basins->val[p]) {
+               tmp = iftMax(closed_basins->val[p], bin->val[q]);
+               if (tmp < closed_basins->val[q]) {
+                  closed_basins->val[q] = tmp;
+                  iftInsertGQueue(&Q, q);
+               }
+            }
+         }
+      }
+   }
 
+   iftDestroyAdjRel(&A);
+   iftDestroyGQueue(&Q);
+   iftDestroySet(&S);
 
-// }
+   return closed_basins;
+}
 
 int main(int argc, char *argv[])
 {
@@ -363,7 +415,10 @@ int main(int argc, char *argv[])
       // aux1 = MyCloseBin(aux2, 15.0);
       // aux1 = MyOpenBin(aux2, 3.0);
       // aux1 = MyAsfCOBin(aux2, 5);
-      aux1 = iftAsfCOBin(aux2, 5);
+      // aux1 = iftAsfCOBin(aux2, 5);
+      // aux1 = MyCloseBasins(aux2);
+      S = MyImageBorder(aux2);
+      aux1 = iftCloseBasins(aux2, S, NULL);
       // aux1 = iftOpenBin(aux2, 3.0);
       // aux1 = iftCloseBin(aux2, 15.0);
       iftDestroyImage(&aux2);
