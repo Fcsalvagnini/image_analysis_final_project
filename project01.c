@@ -381,7 +381,6 @@ int main(int argc, char *argv[])
    MemDinInicial = info.uordblks;
    /*--------------------------------------------------------*/
 
-
    if (argc != 3) {
       printf("project01 <P1> <P2>\n");
       printf("P1: folder with original images\n");
@@ -395,8 +394,22 @@ int main(int argc, char *argv[])
    char *out_dir = argv[2];
    iftMakeDir(out_dir);
    iftAdjRel *A = iftCircular(3.5), *B = iftCircular(1.5);
-   for (int i=0; i < 7; i++) {
-      iftSet *S = NULL;
+
+   // File to write bounding box
+   FILE *bounding_box_file;
+   char bounding_box_file_path[100];
+   sprintf(bounding_box_file_path,"%s/ift_cropped_bb.csv",out_dir);
+   bounding_box_file = fopen(bounding_box_file_path, "w");
+   /* fopen() return NULL if unable to open file in given mode. */
+   if (bounding_box_file == NULL)
+   {
+      printf("[INFO] Unable to open '%s' file to write bounding boxes.\n", bounding_box_file_path);
+      exit(0);
+   }
+   // Writes header to csv file
+   fprintf(bounding_box_file, "file,xmin,ymin,xmax,ymax\n");
+
+   for (int i=0; i < nimages; i++) {
       char *img_basename = iftFilename(fs->files[i]->path,".png");
       iftImage *orig = iftReadImageByExt(fs->files[i]->path);
       /* normalize  image */
@@ -407,7 +420,10 @@ int main(int argc, char *argv[])
       iftImage *aux2 = iftSelectCompAboveArea(aux1,B,100);
       iftDestroyImage(&aux1);
 
-      // Space to test implementations
+      /* Lines to compare out implementation against the professor ones:
+      To compare the implementations, please uncoment the methods that you want
+      to compare, save the images to different folders, and use the
+      compare_pairs_of_images.py script.
       // aux1 = MyDilateBin(aux2, &S, 15.0);
       // aux1 = MyErodeBin(aux2, &S, 2.0);
       // aux1 = iftErodeBin(aux2, &S, 2.0);
@@ -417,38 +433,40 @@ int main(int argc, char *argv[])
       // aux1 = MyAsfCOBin(aux2, 5);
       // aux1 = iftAsfCOBin(aux2, 5);
       // aux1 = MyCloseBasins(aux2);
-      S = MyImageBorder(aux2);
-      aux1 = iftCloseBasins(aux2, S, NULL);
+      // S = MyImageBorder(aux2);
+      // aux1 = iftCloseBasins(aux2, S, NULL);
       // aux1 = iftOpenBin(aux2, 3.0);
       // aux1 = iftCloseBin(aux2, 15.0);
       iftDestroyImage(&aux2);
-      //
+      */
 
       /* apply morphological filtering to make the fingerprint the
       largest component: this operation must add frame and remove it
       afterwards.
       */
-      // aux1           = MyAsfCOBin(aux2,15.0);//iftAsfCOBin(aux2,15.0);
-      // iftDestroyImage(&aux2);
+      aux1 = MyAsfCOBin(aux2,15.0);//iftAsfCOBin(aux2,15.0);
+      iftDestroyImage(&aux2);
       /* close holes inside the components to allow subsequent erosion
       from the external borders only */
-      // aux2           = MyCloseBasins(aux1); //iftCloseBasins(aux1,NULL,NULL);
-      // iftDestroyImage(&aux1);
+      aux2 = MyCloseBasins(aux1); //iftCloseBasins(aux1,NULL,NULL);
+      iftDestroyImage(&aux1);
       /* erode components and select the largest one to estimate its
       center as close as possible to the center of the fingerprint */
-      // iftSet *S = NULL;
-      //  aux1           = MyErodeBin(aux2,&S,30.0);//iftErodeBin(aux2,&S,30.0);
-      // iftDestroySet(&S);
-      // iftDestroyImage(&aux2);
-      //  aux2           = iftSelectLargestComp(aux1,B);
+      iftSet *S = NULL;
+      aux1 = MyErodeBin(aux2,&S,30.0);//iftErodeBin(aux2,&S,30.0);
+      iftDestroySet(&S);
+      iftDestroyImage(&aux2);
+      aux2 = iftSelectLargestComp(aux1,B);
 
       /* crop the normalized image by the minimum bounding box of the
-      //     resulting mask (largest component) */
-
-      // iftDestroyImage(&aux1);
-      // iftVoxel pos;
-      // iftBoundingBox bb = iftMinBoundingBox(aux2, &pos);
-      // aux1              = iftExtractROI(norm,bb);
+      resulting mask (largest component) */
+      iftDestroyImage(&aux1);
+      iftVoxel pos;
+      iftBoundingBox bb = iftMinBoundingBox(aux2, &pos);
+      aux1 = iftExtractROI(norm,bb);
+      fprintf(bounding_box_file,
+               "%s.png,%d,%d,%d,%d\n",
+               img_basename, bb.begin.x, bb.begin.y, bb.end.x, bb.end.y);
 
       sprintf(filename,"%s/%s.png",out_dir,img_basename);
       iftWriteImageByExt(aux1,filename);
@@ -456,7 +474,6 @@ int main(int argc, char *argv[])
       iftDestroyImage(&norm);
       iftDestroyImage(&aux1);
       iftDestroyImage(&aux2);
-      iftDestroySet(&S);
       iftFree(img_basename);
       printf("Processed %d/%d images\n",i+1,nimages);
    }
@@ -464,6 +481,7 @@ int main(int argc, char *argv[])
   iftDestroyFileSet(&fs);
   iftDestroyAdjRel(&A);
   iftDestroyAdjRel(&B);
+  fclose(bounding_box_file);
 
    timer *t_end=iftToc();
    char *formatted_time = iftFormattedTime(iftCompTime(t_start, t_end));
