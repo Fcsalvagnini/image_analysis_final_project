@@ -1,5 +1,7 @@
 *.pyc
-*.pdf
 *.png
 libmo445/*
-
+.vscode/
+nicealgo.sty
+projeto.tex
+src_phase_2/models/FPNet.pth
