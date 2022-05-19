@@ -428,10 +428,10 @@ int main(int argc, char *argv[])
       iftImage *aux2 = iftSelectCompAboveArea(aux1,B,100);
       iftDestroyImage(&aux1);
 
-      /* Lines to compare out implementation against the professor ones:
-      To compare the implementations, please uncoment the methods that you want
+      /* Lines to compare our implementation against the professor ones:
+      To compare the implementations, please uncomment the methods that you want
       to compare, save the images to different folders, and use the
-      compare_pairs_of_images.py script.
+      compare_two_folders.py script.
       // aux1 = MyDilateBin(aux2, &S, 15.0);
       // aux1 = MyErodeBin(aux2, &S, 2.0);
       // aux1 = iftErodeBin(aux2, &S, 2.0);
