@@ -1,2 +1,4 @@
+# radius of MyAsfCOBin method
 15.0
+# radius of MyErodeBin method
 30.0
