@@ -1,4 +1,4 @@
-LIBMO445 = ./libmo445
+LIBMO445 = ../libmo445
 
 FLAGS = -fPIC -std=gnu11 -Wall -Wno-unused-result -pedantic
 

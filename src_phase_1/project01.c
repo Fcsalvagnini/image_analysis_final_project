@@ -381,12 +381,20 @@ int main(int argc, char *argv[])
    MemDinInicial = info.uordblks;
    /*--------------------------------------------------------*/
 
-   if (argc != 3) {
-      printf("project01 <P1> <P2>\n");
-      printf("P1: folder with original images\n");
-      printf("P2: folder with cropped images\n");
+   if (argc != 4) {
+      printf("project01 <P1> <P2> <CF>\n");
+      printf("P1: Folder with original images\n");
+      printf("P2: Folder with cropped images\n");
+      printf("CF: Configuration File\n");
       exit(0);
    }
+
+   // Gets radius of the MyAsfCOBin and MyErodeBin methods
+   float asfco_bin_radius, erode_bin_radius;
+   FILE *fp = fopen(argv[3],"r");
+   fscanf(fp, "%f", &asfco_bin_radius);
+   fscanf(fp, "%f", &erode_bin_radius);
+   fclose(fp);
 
    printf("[INFO] Reading input Images:\n");
    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(argv[1],".png", 1);
@@ -444,7 +452,7 @@ int main(int argc, char *argv[])
       largest component: this operation must add frame and remove it
       afterwards.
       */
-      aux1 = MyAsfCOBin(aux2,15.0);//iftAsfCOBin(aux2,15.0);
+      aux1 = MyAsfCOBin(aux2,asfco_bin_radius);//iftAsfCOBin(aux2,15.0);
       iftDestroyImage(&aux2);
       /* close holes inside the components to allow subsequent erosion
       from the external borders only */
@@ -453,7 +461,7 @@ int main(int argc, char *argv[])
       /* erode components and select the largest one to estimate its
       center as close as possible to the center of the fingerprint */
       iftSet *S = NULL;
-      aux1 = MyErodeBin(aux2,&S,30.0);//iftErodeBin(aux2,&S,30.0);
+      aux1 = MyErodeBin(aux2,&S,erode_bin_radius);//iftErodeBin(aux2,&S,30.0);
       iftDestroySet(&S);
       iftDestroyImage(&aux2);
       aux2 = iftSelectLargestComp(aux1,B);
