@@ -15,3 +15,7 @@ The following students contributed to the development of this repository.
 - Gustavo Lelis
 - Mateus Oliveira
 - Wilson Legnaro Volpi Nakano
+
+## Requisites
+
+To compile the source code for project01 and project02 one needs the libift library. To download it, please access [https://www.ic.unicamp.br/~afalcao/](https://www.ic.unicamp.br/~afalcao/) and download it from the last Image Analysis Class (Courses/Image Analysis/Examples of codes using a C library).
