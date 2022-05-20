@@ -7,7 +7,19 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 
 
+"""
+script usage example:
+    python3 calculate_IoU.py --gt_csv=<gt-csv-path> --ift_csv=<ift-csv-path> [--save_image=<bool>] [--path=<image-path>]
+        args:
+            --gt_csv: groundtruth bounding box data stored as "csv" file formay [required]
+            --gt_csv: ift bounding box data stored as "csv" file format [required]
+            --save_image: boolean option of wheter save or not the output images (listed on gt_csv) with groundtruth, ift bbox, and correspondent IoU metric [optional]
+            --path: 
+             
+    python3 calculate_IoU.py --gt_csv=../misc/fingerprint_seed13_50.csv --ift_csv=../output_folder/output_final/ift_cropped_bb.csv --
 
+
+"""
 def read_csv(csv_file):
     return pd.read_csv(csv_file, index_col=False)
 
@@ -25,6 +37,7 @@ def checkDir(path):
         os.mkdir(path)
 
 def plot_boxes(imPath, box_gt, box_ift, _iou, saving_path='bbox_comparison'):
+    
     image = read_img(imPath)
     xmin_gt, ymin_gt, xmax_gt, ymax_gt = box_gt
     xmin_ift, ymin_ift, xmax_ift, ymax_ift = box_ift
@@ -33,7 +46,7 @@ def plot_boxes(imPath, box_gt, box_ift, _iou, saving_path='bbox_comparison'):
     currentAxis = plt.gca()
     currentAxis.add_patch(Rectangle((xmin_gt, ymin_gt), xmax_gt-xmin_gt, ymax_gt-ymin_gt,
                         fill=None, alpha=1, edgecolor='r', label='GT'))
-    plt.text(xmin_gt, ymin_gt+25, 'GD', c='r')
+    plt.text(xmin_gt, ymin_gt+25, 'GT', c='r')
     currentAxis.add_patch(Rectangle((xmin_ift, ymin_ift), xmax_ift-xmin_ift, ymax_ift-ymin_ift,
                         fill=None, alpha=1, edgecolor='dodgerblue', label='IFT'))
     plt.text(xmin_ift, ymin_ift+25, 'IFT', c='dodgerblue')
@@ -41,14 +54,18 @@ def plot_boxes(imPath, box_gt, box_ift, _iou, saving_path='bbox_comparison'):
     plt.axis('off')
     
     plt.savefig(os.path.join(saving_path, imPath.split('/')[-1]))
+    
 
 
-def iou(gt:dict, ift:dict, save_image, path, csv_iou='iou_fp.csv'):
-    print('[INFO] Calculanting IoU')
+def iou(gt:dict, ift:dict, save_image, path, saving_path, csv_iou='iou_fp.csv'):
+    print('[INFO] Calculating IoU')
     data = list()
-    for key in gt.keys():
-        xmin_gt, ymin_gt, xmax_gt, ymax_gt = retrieve_bbox(gt[key])
-        xmin_ift, ymin_ift, xmax_ift, ymax_ift = retrieve_bbox(ift[key])
+    total_ims = len(gt.keys())
+    for i, key in enumerate(gt.keys()):
+        gt_box = retrieve_bbox(gt[key])
+        ift_box = retrieve_bbox(ift[key])
+        xmin_gt, ymin_gt, xmax_gt, ymax_gt = gt_box
+        xmin_ift, ymin_ift, xmax_ift, ymax_ift = ift_box
         
         x1 = max(xmin_gt, xmin_ift)    
         y1 = max(ymin_gt, ymin_ift)    
@@ -63,24 +80,23 @@ def iou(gt:dict, ift:dict, save_image, path, csv_iou='iou_fp.csv'):
         _data = {'img': key, 'iou': _iou}
         data.append(_data)
         if save_image:
+            print(f'[INFO] {i+1}/{total_ims} Generating bbox plots', end='\r')
             imPath = os.path.join(path, key)
-            plot_boxes(imPath,
-                       [xmin_gt, ymin_gt, xmax_gt, ymax_gt],
-                       [xmin_ift, ymin_ift, xmax_ift, ymax_ift],
-                        _iou)
+            plot_boxes(imPath, gt_box, ift_box, _iou, saving_path)
 
     print(f'[INFO] Generating IoU csv -> {csv_iou}')
     df_iou = pd.DataFrame(data)
     df_iou.to_csv(csv_iou, index_label=False)
 
 def main(gt_csv, ift_csv, save_image, path):
+    saving_path=None
     df_gt, df_ift = read_csv(gt_csv), read_csv(ift_csv)
     dict_gt, dict_ift = df2dict(df_gt), df2dict(df_ift)
-    
     if save_image:
-        checkDir(path)
+        saving_path='bbox_comparison'
+        checkDir(saving_path)
     
-    iou(dict_gt, dict_ift, save_image, path)
+    iou(dict_gt, dict_ift, save_image, path, saving_path)
 
 
 if __name__ == '__main__':
@@ -96,5 +112,6 @@ if __name__ == '__main__':
     ift_csv = args.ift_csv
     save_image = args.save_image
     path = args.path
-
+    if save_image and not (path):
+        raise Exception(f"Setting '--save_image' as {save_image} demands the input of '--path' arg. Please, call it again passing the image path.")
     main(gt_csv, ift_csv, save_image, path)
