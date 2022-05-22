@@ -16,10 +16,11 @@ script usage example:
             --save_image: boolean option of wheter save or not the output images (listed on gt_csv) with groundtruth, ift bbox, and correspondent IoU metric [optional]
             --path: 
              
-    python3 calculate_IoU.py --gt_csv=../misc/fingerprint_seed13_50.csv --ift_csv=../output_folder/output_final/ift_cropped_bb.csv --
-
+    usage example:
+    python3 calculate_IoU.py --gt_csv=../misc/fingerprint_seed13_50.csv --ift_csv=../output_folder/output_final/ift_cropped_bb.csv --save_image=True --path=../images_01
 
 """
+
 def read_csv(csv_file):
     return pd.read_csv(csv_file, index_col=False)
 
@@ -41,7 +42,8 @@ def plot_boxes(imPath, box_gt, box_ift, _iou, saving_path='bbox_comparison'):
     image = read_img(imPath)
     xmin_gt, ymin_gt, xmax_gt, ymax_gt = box_gt
     xmin_ift, ymin_ift, xmax_ift, ymax_ift = box_ift
-    plt.figure()
+    plt.figure(figsize=(6,6))
+    
     plt.imshow(image)
     currentAxis = plt.gca()
     currentAxis.add_patch(Rectangle((xmin_gt, ymin_gt), xmax_gt-xmin_gt, ymax_gt-ymin_gt,
@@ -50,9 +52,9 @@ def plot_boxes(imPath, box_gt, box_ift, _iou, saving_path='bbox_comparison'):
     currentAxis.add_patch(Rectangle((xmin_ift, ymin_ift), xmax_ift-xmin_ift, ymax_ift-ymin_ift,
                         fill=None, alpha=1, edgecolor='dodgerblue', label='IFT'))
     plt.text(xmin_ift, ymin_ift+25, 'IFT', c='dodgerblue')
-    plt.title(f'IoU: {_iou:.3f}')
+    plt.title(f'IoU: {_iou:.3f}', fontsize=18)
     plt.axis('off')
-    
+    plt.tight_layout()
     plt.savefig(os.path.join(saving_path, imPath.split('/')[-1]))
     
 
