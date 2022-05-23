@@ -408,7 +408,6 @@ int main(int argc, char *argv[])
    char bounding_box_file_path[100];
    sprintf(bounding_box_file_path,"%s/ift_cropped_bb.csv",out_dir);
    bounding_box_file = fopen(bounding_box_file_path, "w");
-   /* fopen() return NULL if unable to open file in given mode. */
    if (bounding_box_file == NULL)
    {
       printf("[INFO] Unable to open '%s' file to write bounding boxes.\n", bounding_box_file_path);
@@ -472,6 +471,7 @@ int main(int argc, char *argv[])
       iftVoxel pos;
       iftBoundingBox bb = iftMinBoundingBox(aux2, &pos);
       aux1 = iftExtractROI(norm,bb);
+      // Writes bounding box data to the csv file
       fprintf(bounding_box_file,
                "%s.png,%d,%d,%d,%d\n",
                img_basename, bb.begin.x, bb.begin.y, bb.end.x, bb.end.y);
