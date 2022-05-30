@@ -1,0 +1,35 @@
+version: "3"
+
+services: # containers
+  mo445:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+
+    build:
+      # Changes the current folder for docker-compose
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        - username=john_doe
+        - userid=1000
+
+    container_name: mo445
+    image: mo445
+    # Restart policies
+    restart: unless-stopped
+
+    # Logging configuration for the service
+    logging:
+      driver: json-file
+      options:
+        max-size: 50m
+
+    ports:
+      - "8888:8888"
+      - "6006:6006"
+
+    volumes:
+      - ../:/home/john_doe/src/
+
+    command: /opt/conda/envs/mo445/bin/jupyter-lab --ip='0.0.0.0' --port=8888 --no-browser
