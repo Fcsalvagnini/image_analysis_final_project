@@ -13,7 +13,7 @@ RUN apt update && apt upgrade -y \
         cmake zlib1g-dev libjpeg-dev \
         xvfb ffmpeg xorg-dev \
         libboost-all-dev libsdl2-dev \
-        swig unzip zip wget \
+        swig unzip zip wget libopenblas-dev libatlas-base-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # ****************** Install Miniconda ************************* #
