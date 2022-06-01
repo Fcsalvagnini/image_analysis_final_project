@@ -1,7 +1,8 @@
 name: mo445 # Name of the environment
 channels: # Channnels list to search for conda packages
-  - conda-forge
   - defaults
+  - conda
+  - conda-forge
   - pytorch
 dependencies: # Conda packages
   - graphviz

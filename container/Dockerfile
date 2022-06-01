@@ -22,15 +22,15 @@ ENV PATH /opt/conda/bin:$PATH
 CMD [ "/bin/bash" ]
 
 # Leave these args here to better use the Docker build cache
-ARG CONDA_VERSION=py38_4.9.2
-ARG CONDA_MD5=122c8c9beb51e124ab32a0fa6426c656
+ARG CONDA_VERSION=py39_4.11.0
+ARG SHA256SUM=4ee9c3aa53329cd7a63b49877c0babb49b19b7e5af29807b793a76bdb1d362b4
 
 RUN wget --quiet https://repo.anaconda.com/miniconda/Miniconda3-${CONDA_VERSION}-Linux-x86_64.sh -O miniconda.sh && \
-    echo "${CONDA_MD5}  miniconda.sh" > miniconda.md5 && \
-    if ! md5sum --status -c miniconda.md5; then exit 1; fi && \
+    echo "${SHA256SUM}  miniconda.sh" > shasum && \
+    if ! sha256sum --check --status shasum; then exit 1; fi && \
     mkdir -p /opt && \
     sh miniconda.sh -b -p /opt/conda && \
-    rm miniconda.sh miniconda.md5 && \
+    rm miniconda.sh shasum && \
     ln -s /opt/conda/etc/profile.d/conda.sh /etc/profile.d/conda.sh && \
     echo ". /opt/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
     echo "conda activate base" >> ~/.bashrc && \
