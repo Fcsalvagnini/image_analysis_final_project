@@ -1,14 +1,14 @@
 #include "ift.h"
 
-/* 
-   Project 02, course MO445, Prof. Alexandre Falcao. 
+/*
+   Project 02, course MO445, Prof. Alexandre Falcao.
 
    This code crops a region of interest (ROI) at the center of the
    source image and finds the best match between source and the
    corresponding ROI in the target image. Both regions of interest,
    source and target, are saved in the output folder for a new
    comparison using neural networks, which should indicate whether or
-   not the images come from the same class. 
+   not the images come from the same class.
 
    Your task is to play with the parameters of this code (i.e.,
    CROP_SIZE and the deltas in the parameter file of the MSPS
@@ -17,7 +17,7 @@
    network to maximize performance in the identification of
    individuals by fingerprint images.
 
-*/ 
+*/
 
 /* you may uncomment this line to verify extra information about the process */
 
@@ -50,8 +50,8 @@ typedef struct _fp_match_problem {
   iftSet    *S;      /* set with points from the source image */
   iftPoint   center; /* center of the source points */
   int        Imax;   /* maximum intensity of the target image */
-  char      *source_basename; /* basename of the source image */ 
-  char      *target_basename; /* basename of the target image */ 
+  char      *source_basename; /* basename of the source image */
+  char      *target_basename; /* basename of the target image */
 } FPMatchProblem;
 
 /* Functions used by this code */
@@ -79,7 +79,7 @@ FPMatchProblem *CreateFPMatchProblem(iftImage *source, iftImage *target,
   fpmp->S        = NULL;
   fpmp->source_basename = source_basename;
   fpmp->target_basename = target_basename;
-  
+
   for (int p=0; p < source->n; p++)
     iftInsertSet(&fpmp->S,p);
 
@@ -96,6 +96,7 @@ void DestroyFPMatchProblem(FPMatchProblem **fpmp)
   FPMatchProblem *aux = *fpmp;
 
   if (aux != NULL) {
+    iftDestroySet(&(*fpmp)->S);
     iftFree(aux);
     fpmp = NULL;
   }
@@ -124,6 +125,9 @@ float FPMatchFitness(void *problem, float *theta)
   
   trans[0].z = trans[1].z = 0;
   
+  // [TODO]
+  // EXPLAIN WHY THE TRANSLATION IS NECESSARY
+  // EXPLAIN EACH TRANSFORMATION 
   trans[0].x = -fpmp->center.x; trans[0].y  = -fpmp->center.y; 
   M[0]       = iftTranslationMatrix(trans[0]);
   M[1]       = iftScaleMatrix(theta[3],theta[3],theta[3]);
@@ -221,8 +225,10 @@ float FPMatchFitness(void *problem, float *theta)
 
 
 #endif
-  
+
   iftDestroyMatrix(&T);
+  // iftDestroySet(&S);
+
   return(cost/npts);
 }
 
@@ -238,9 +244,14 @@ iftImage *CropSourceImage(iftImage *source, int cropsize)
   iftVoxel  pos;
   iftBoundingBox bb = iftMinBoundingBox(bin, &pos);
   iftDestroyImage(&bin);
-  
+  // [TODO] 
+  // IS IT NECESSARY? AS iftMinBoundingBox ALREADY RETURN THE GEOMETRIC CENTER TO &pos
+  // CODE THE C PROJECT TO RECEIVE THE CROP SIZE FROM THE CONFIG FILE
   pos.x      = (bb.begin.x+bb.end.x)/2; 
   pos.y      = (bb.begin.y+bb.end.y)/2;
+  // If the crop region gets outside the image domain, it adds a frame before 
+  // cropping the image (It guarantees that the maximum value of pixels outside 
+  // image domain is assigned to sz)
   int sz     = iftMax(iftMax(iftMax(cropsize/2-pos.x,cropsize/2-pos.y),
 			     ((pos.x + cropsize/2)-(img->xsize-1))),
 		      ((pos.y + cropsize/2)-(img->ysize-1)));
@@ -392,7 +403,10 @@ iftMSPS *InitMSPS(char *deltafile, FPMatchProblem *fpmp)
 
   return(msps);
 }
-  
+
+// TODODO
+// Buscar entender a main, navegando por toda lógica implementada.
+
 int main(int argc, char **argv) {
 
   timer *tstart=NULL;
@@ -435,6 +449,7 @@ int main(int argc, char **argv) {
     char file1[20], file2[20];
     fscanf(comp,"%s %s",file1,file2);
     sprintf(filename,"%s/%s",argv[1],file1);
+    // source -> target in the comp file
     iftImage *source        = iftReadImageByExt(filename);
     sprintf(filename,"%s/%s",argv[1],file2);
     iftImage *target        = iftReadImageByExt(filename);    
@@ -443,28 +458,28 @@ int main(int argc, char **argv) {
 
     fprintf(newcomp,"%s_%d.png %s_%d.png\n",source_basename,i+1,
 	    target_basename,i+1);
-    
+
     /* crop source image */
 
     iftImage *aux = CropSourceImage(source, CROP_SIZE);
     iftDestroyImage(&source);
     source = aux;
-    
+
     /* align source and target, returning the matching score and saving
        the aligned images in the output folder */
-    
-    FPMatchProblem *fpmp  = CreateFPMatchProblem(source, target, source_basename, target_basename);   
+
+    FPMatchProblem *fpmp  = CreateFPMatchProblem(source, target, source_basename, target_basename);
     iftMSPS *msps         = InitMSPS(argv[3], fpmp);
-    
+
     fprintf(score,"%.4f %s %s\n",iftMSPSMin(msps),file1,file2);
-    
+
      /* visualize the alignment of target in the coordinate space of source
-       with the skeleton of source on the top of it */ 
+       with the skeleton of source on the top of it */
 
     Align_and_SaveData(fpmp, msps->theta, i+1, out_dir);
 
     /* free memory */
-    
+
     iftDestroyMSPS(&msps);
     DestroyFPMatchProblem(&fpmp);
     iftFree(source_basename);
