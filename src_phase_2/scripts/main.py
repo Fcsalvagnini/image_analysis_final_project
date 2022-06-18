@@ -75,7 +75,7 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
         "accuracy" : {"train" : [], "validation" : []}
     }
 
-    for epoch in range(1, 3):
+    for epoch in range(1, epochs + 1):
         run_train_epoch(
             model, optimizer, criterion, train_loader, monitoring_metrics, epoch
         )
