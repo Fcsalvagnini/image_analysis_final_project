@@ -3,12 +3,83 @@ from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicTransformations, BasicDataset
 from losses import ContrastiveLoss
-from models import SimpleConvSiameseNN
+from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN
 from torchsummary import summary
 from tqdm import trange
 import gc
+import yaml
+import argparse
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+FACTORY_DICT = {
+    "model" : {
+        "SimpleConvSiameseNN" : SimpleConvSiameseNN,
+        "PreTrainedVGGSiameseNN" : PreTrainedVGGSiameseNN,
+    },
+    "dataset" : {
+        "BasicDataset" : BasicDataset
+    },
+    "transformation" : {
+        "BasicTransformations" : BasicTransformations
+    },
+    "optimizer" : {
+        "Adam" : optim.Adam
+    },
+    "loss" : {
+        "ContrastiveLoss" : ContrastiveLoss
+    }
+}
+
+def get_dataset(dataset_configs, configs):
+    transform_type = list(dataset_configs.values())[0]["transform"]
+    if transform_type:
+        transformations_configs = configs["transformation"]
+        transfomations_obj = FACTORY_DICT["transformation"][transform_type](
+            **transformations_configs[transform_type]
+        )
+        list(dataset_configs.values())[0]["transform"] = transfomations_obj.get_transformations()
+
+    dataset = FACTORY_DICT["dataset"][list(dataset_configs.keys())[0]](
+        **dataset_configs[list(dataset_configs.keys())[0]]
+    )
+    
+    return dataset
+
+def experiment_factory(configs):
+    train_dataset_configs = configs["train_dataset"]
+    validation_dataset_configs = configs["validation_dataset"]
+    model_configs = configs["model"]
+    optimizer_configs = configs["optimizer"]
+    criterion_configs = configs["loss"]
+    
+    # Construct the dataloaders with any given transformations (if any)
+    train_dataset = get_dataset(train_dataset_configs, configs)
+    validation_dataset = get_dataset(validation_dataset_configs, configs)
+    train_loader = DataLoader(
+        train_dataset, batch_size=configs["batch_size"], shuffle=True
+    )
+    validation_loader = DataLoader(
+        validation_dataset, batch_size=configs["batch_size"], shuffle=True
+    )
+
+    model = FACTORY_DICT["model"][list(model_configs.keys())[0]](
+        **model_configs[list(model_configs.keys())[0]]
+    )
+    optimizer = FACTORY_DICT["optimizer"][list(optimizer_configs.keys())[0]](
+        model.parameters(), **optimizer_configs[list(optimizer_configs.keys())[0]]
+    )
+    criterion = FACTORY_DICT["loss"][list(criterion_configs.keys())[0]](
+        **criterion_configs[list(criterion_configs.keys())[0]]
+    )
+
+    return model, train_loader, validation_loader, optimizer, criterion
+
+def parse_yaml_file(yaml_path):
+    with open(yaml_path, "r") as yaml_file:
+        configurations = yaml.load(yaml_file, Loader=yaml.FullLoader)
+
+    return configurations
 
 def run_train_epoch(model, optimizer, criterion, loader, monitoring_metrics, epoch):
     model.train()
@@ -28,7 +99,7 @@ def run_train_epoch(model, optimizer, criterion, loader, monitoring_metrics, epo
             running_accuracy  += accuracy.cpu()
 
             progress_bar.set_postfix(
-                desc=f"[Epoch {epoch}] Loss: {loss:.3e} - Acc {accuracy:.3e}"
+                desc=f"[Epoch {epoch}] Loss: {running_loss:.3e} - Acc {running_accuracy:.3e}"
             )
 
     monitoring_metrics["loss"]["train"].append(
@@ -57,7 +128,7 @@ def run_validation(model, criterion, loader, monitoring_metrics, epoch):
                 running_accuracy  += accuracy.cpu()
 
                 progress_bar.set_postfix(
-                    desc=f"[Epoch {epoch}] Loss: {loss:.3e} - Acc {accuracy:.3e}"
+                    desc=f"[Epoch {epoch}] Loss: {running_loss:.3e} - Acc {running_accuracy:.3e}"
                 )
 
         monitoring_metrics["loss"]["validation"].append(
@@ -68,14 +139,14 @@ def run_validation(model, criterion, loader, monitoring_metrics, epoch):
         )
 
 def run_training_experiment(model, train_loader, validation_loader, optimizer, 
-        criterion, epochs
+        criterion, configs
     ):
     monitoring_metrics = {
         "loss" : {"train" : [], "validation" : []},
         "accuracy" : {"train" : [], "validation" : []}
     }
 
-    for epoch in range(1, epochs + 1):
+    for epoch in range(1, configs["epochs"] + 1):
         run_train_epoch(
             model, optimizer, criterion, train_loader, monitoring_metrics, epoch
         )
@@ -83,36 +154,23 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
             model, criterion, validation_loader, monitoring_metrics, epoch
         )
 
-    export_learning_curves(monitoring_metrics, output_folder="../report/dataset_v1/")
-    torch.save(model, "../models/first_model.pth")
-
+    export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
+    torch.save(model, configs["path_to_save_model"])
 
 if __name__ == "__main__":
-    transfomation_obj = BasicTransformations(image_size=[120, 120])
-    transfomations_composition = transfomation_obj.get_transformations()
-    train_dataset = BasicDataset(        
-        images_folder = "../data/registred_images_v1_train/",
-        compare_file = "../compare_files/compare_splited_v1_train_new.txt",
-        transform=transfomations_composition
+    # Reads YAML that sets configurations for training experiment
+    parser = argparse.ArgumentParser(description="Fingerprint Identification Model Training Framework")
+    parser.add_argument(
+        "config_file", type=str, help="Path to YAML configuration file"
     )
-    validation_dataset = BasicDataset(        
-        images_folder = "../data/registred_images_v1_validation/",
-        compare_file = "../compare_files/compare_splited_v1_validation_new.txt",
-        transform=transfomations_composition
-    )
-    train_data_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-    validation_data_loader = DataLoader(validation_dataset, batch_size=32, shuffle=True)
-
-    epochs = 200
-    model = SimpleConvSiameseNN().to(DEVICE)
-    summary(model)
+    args = parser.parse_args()
+    configurations = parse_yaml_file(args.config_file)
     
-    criterion = ContrastiveLoss()
-    optimizer = optim.Adam(
-        model.parameters(), lr = 0.001, weight_decay=0.01
-    )
+    model, train_loader, validation_loader, optimizer, criterion = experiment_factory(configurations)
+
+    summary(model)
 
     run_training_experiment(
-        model, train_data_loader, validation_data_loader, optimizer, 
-        criterion, epochs
+        model, train_loader, validation_loader, optimizer, 
+        criterion, configurations
     )
