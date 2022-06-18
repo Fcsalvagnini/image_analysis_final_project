@@ -68,7 +68,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Registry Configuration Generator")
     parser.add_argument(
         '--input_folder', type=str, help='Path to save the compare.txt file',
-        default='../images_02/'
+        default='../data/images_02/'
     )
     parser.add_argument(
         '--false_pairs', type=int, default=3,
@@ -82,16 +82,45 @@ if __name__ == "__main__":
         '--output_file', type=str, help='Path to save the compare.txt file',
         default="../compare_files/compare.txt"
     )
-
+    parser.add_argument('--split_data', action='store_true')
+    parser.set_defaults(feature=False)
     args = parser.parse_args()
 
     images_list = os.listdir(args.input_folder)
     # Separate subjects by subset (Train,validation and test)
     fingerprint_subjects = get_fingerprint_subjects(images_list)
 
-    write_comparisons(fingerprint_subjects,
+
+    if not args.split_data:
+        write_comparisons(fingerprint_subjects,
+                    args.false_pairs,
+                    args.images_by_false_pair,
+                    images_list,
+                    args.output_file
+        )
+    else:
+        np.random.seed(789)
+        np.random.shuffle(fingerprint_subjects)
+
+        subsets = {
+            "train" : fingerprint_subjects[: int(0.7 * len(fingerprint_subjects))],
+            "validation" : fingerprint_subjects[int(0.7 * len(fingerprint_subjects)) : int(0.85 * len(fingerprint_subjects))],
+            "test" : fingerprint_subjects[int(0.85 * len(fingerprint_subjects)):]
+        }
+
+        basename = os.path.basename(args.output_file)
+        filename, extension = os.path.splitext(basename)
+
+        for subset in subsets.keys():
+            output_file = f"{filename}_{subset}{extension}"
+            
+            folders_structure = list(os.path.split(args.output_file))
+            folders_structure[-1] = output_file
+            output_file = os.path.join(*folders_structure)
+        
+            write_comparisons(subsets[subset],
                         args.false_pairs,
                         args.images_by_false_pair,
                         images_list,
-                        args.output_file
-    )
+                        output_file
+            )

@@ -130,7 +130,7 @@ float FPMatchFitness(void *problem, float *theta)
   // EXPLAIN EACH TRANSFORMATION 
   trans[0].x = -fpmp->center.x; trans[0].y  = -fpmp->center.y; 
   M[0]       = iftTranslationMatrix(trans[0]);
-  M[1]       = iftScaleMatrix(theta[3],theta[3],theta[3]);
+  M[1]       = iftScaleMatrix(theta[3],theta[3],1.0);
   M[2]       = iftMultMatrices(M[1],M[0]);
   M[3]       = iftRotationMatrix(IFT_AXIS_Z, theta[2]);
   M[4]       = iftMultMatrices(M[3],M[2]);
@@ -289,7 +289,7 @@ void Align_and_SaveData(FPMatchProblem *fpmp, float *theta, int line,
 
   trans[0].x = -fpmp->center.x; trans[0].y  = -fpmp->center.y; 
   M[0]       = iftTranslationMatrix(trans[0]);
-  M[1]       = iftScaleMatrix(theta[3],theta[3],theta[3]);
+  M[1]       = iftScaleMatrix(theta[3],theta[3],1.0);
   M[2]       = iftMultMatrices(M[1],M[0]);
   M[3]       = iftRotationMatrix(IFT_AXIS_Z, theta[2]);
   M[4]       = iftMultMatrices(M[3],M[2]);
@@ -380,11 +380,13 @@ iftMSPS *InitMSPS(char *deltafile, FPMatchProblem *fpmp)
   fscanf(fp,"%d %d",&n,&m);
 
   msps = iftCreateMSPS(n,m,FPMatchFitness,fpmp);
+  msps->theta[3] = 1.0; //Scale
   
   for (int parameter=0; parameter < n; parameter++) {
     for (int scale=0; scale < m; scale++) {
       fscanf(fp,"%f",
 	     &msps->delta->val[iftGetMatrixIndex(msps->delta,parameter,scale)]);
+       // Mexer no teta e inicializa-los, o default esta como 0 0 0.
     }
   }
 
@@ -461,6 +463,7 @@ int main(int argc, char **argv) {
 
     /* crop source image */
 
+    // Also crop the target image, test it to validate if it correctly eliminates the background.
     iftImage *aux = CropSourceImage(source, CROP_SIZE);
     iftDestroyImage(&source);
     source = aux;
