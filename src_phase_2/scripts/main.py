@@ -66,9 +66,14 @@ def experiment_factory(configs):
         validation_dataset, batch_size=configs["batch_size"], shuffle=True
     )
 
-    model = FACTORY_DICT["model"][list(model_configs.keys())[0]](
-        **model_configs[list(model_configs.keys())[0]]
-    )
+    # Build model
+    if type(model_configs) == dict:
+        model = FACTORY_DICT["model"][list(model_configs.keys())[0]](
+            **model_configs[list(model_configs.keys())[0]]
+        )
+    else:
+        model = FACTORY_DICT["model"][model_configs]()
+
     optimizer = FACTORY_DICT["optimizer"][list(optimizer_configs.keys())[0]](
         model.parameters(), **optimizer_configs[list(optimizer_configs.keys())[0]]
     )

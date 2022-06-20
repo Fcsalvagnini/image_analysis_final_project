@@ -1,5 +1,6 @@
 from torch_snippets import nn
 from vit_transformer import PatchEmbedding, TransformerEncoder
+from torchvision import models
 
 class ViT(nn.Sequential):
     def __init__(self,
@@ -37,7 +38,6 @@ class ViTSiamese(nn.Module):
         output_2 = self.vit_transformer(input_2)
 
         return output_1, output_2
-
 
 def ConvBlock(channels_in, channels_out, kernel_size=3):
     return nn.Sequential(
@@ -79,15 +79,26 @@ class SimpleConvSiameseNN(nn.Module):
 class PreTrainedVGGSiameseNN(nn.Module):
     def __init__(self):
         super(PreTrainedVGGSiameseNN, self).__init__()
+        self.features = nn.Sequential(
+            *list(models.vgg16(pretrained=True).children())[:-1]
+        )
+        for parameter in self.features.parameters():
+            parameter.requires_grad = False
 
-        """
-        [TODO] 
-        - DEFINE VGG MODEL WITH PRETRAINED WEIGHTS
-        - ADD A HEAD TO EXTRACT THE FEATURES (TRAINABLE PARAMETERS)
-        """
-
+        self.dimensionality_reductor = nn.Sequential(
+            nn.Flatten(),
+            models.vgg16(pretrained=True).classifier[0],
+            nn.Linear(4096, 512),
+            nn.ReLU(inplace=True),
+            nn.Linear(512, 256),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 64),
+        )
+    
     def forward(self, input_1, input_2):
         output_1 = self.features(input_1)
+        output_1 = self.dimensionality_reductor(output_1)
         output_2 = self.features(input_2)
+        output_2 = self.dimensionality_reductor(output_2)
 
         return output_1, output_2

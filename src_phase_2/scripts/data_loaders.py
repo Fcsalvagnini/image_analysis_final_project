@@ -28,8 +28,9 @@ class BasicTransformations:
         return transformations_composition
 
 class BasicDataset(Dataset):
-    def __init__(self, images_folder, compare_file, transform = None):
+    def __init__(self, images_folder, compare_file, transform = None, mode=None):
         self.transform = transform
+        self.mode = mode
 
         with open(compare_file, "r") as file:
             lines = file.read().splitlines()
@@ -46,11 +47,15 @@ class BasicDataset(Dataset):
         person_2 = image_2.split("_")[0]
 
         true_label = 1 if person_1 == person_2 else 0
-        image_1 = read(os.path.join(self.images_folder, image_1))
-        image_2 = read(os.path.join(self.images_folder, image_2))
-        image_1 = np.expand_dims(image_1, 2)
-        image_2 = np.expand_dims(image_2, 2)
-
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+            image_2 = np.expand_dims(image_2, 2)
 
         if self.transform:
             image_1 = self.transform(image_1)
