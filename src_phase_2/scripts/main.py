@@ -110,7 +110,7 @@ def run_train_epoch(model, optimizer, criterion, loader,
             running_accuracy += accuracy.cpu()
 
             progress_bar.set_postfix(
-                desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx * batch_size):.3e} - Acc {running_accuracy/(batch_idx * batch_size):.3e}"
+                desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
             )
 
     monitoring_metrics["loss"]["train"].append(
@@ -141,7 +141,7 @@ def run_validation(model, criterion, loader, monitoring_metrics,
                 running_accuracy += accuracy.cpu()
 
                 progress_bar.set_postfix(
-                    desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx * batch_size):.3e} - Acc {running_accuracy/(batch_idx * batch_size):.3e}"
+                    desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
                 )
 
         monitoring_metrics["loss"]["validation"].append(
