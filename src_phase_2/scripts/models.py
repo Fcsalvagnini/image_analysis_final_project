@@ -1,6 +1,8 @@
 from torch_snippets import nn
 from vit_transformer import PatchEmbedding, TransformerEncoder
 from torchvision import models
+from einops.layers.torch import Reduce
+
 
 class ViT(nn.Sequential):
     def __init__(self,
@@ -13,6 +15,8 @@ class ViT(nn.Sequential):
         super().__init__(
             PatchEmbedding(in_channels, patch_size, emb_size, img_size),
             TransformerEncoder(depth, emb_size=emb_size, **kwargs),
+            Reduce('b n e -> b e', reduction='mean'),
+            nn.LayerNorm(emb_size)
         )
 
 
@@ -38,6 +42,7 @@ class ViTSiamese(nn.Module):
         output_2 = self.vit_transformer(input_2)
 
         return output_1, output_2
+
 
 def ConvBlock(channels_in, channels_out, kernel_size=3):
     return nn.Sequential(
@@ -94,7 +99,7 @@ class PreTrainedVGGSiameseNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(256, 64),
         )
-    
+
     def forward(self, input_1, input_2):
         output_1 = self.features(input_1)
         output_1 = self.dimensionality_reductor(output_1)
