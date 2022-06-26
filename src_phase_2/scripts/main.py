@@ -185,7 +185,7 @@ if __name__ == "__main__":
 
     model, train_loader, validation_loader, optimizer, criterion = experiment_factory(configurations)
 
-    summary(model)
+    #summary(model)
 
     run_training_experiment(
         model, train_loader, validation_loader, optimizer,
