@@ -10,6 +10,8 @@ import gc
 import yaml
 import argparse
 
+import wandb
+
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 FACTORY_DICT = {

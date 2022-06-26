@@ -1,0 +1,9 @@
+{
+  "data_path": "",
+  "data_nlets": "compare.txt",
+
+  "training": {
+    "num_splits": 5
+  }
+  
+}  

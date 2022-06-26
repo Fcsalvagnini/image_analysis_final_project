@@ -17,3 +17,6 @@ src_phase_2/data/
 src_phase_2/test_comparisons.txt
 src_phase_2/valid_comparisons.txt
 src_phase_2/train_comparisons.txt
+src_phase_2/pipeline/wandb/
+src_phase_2/scripts/wandb/
+src_phase_2/wandb/
