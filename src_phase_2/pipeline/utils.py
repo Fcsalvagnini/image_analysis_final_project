@@ -19,3 +19,17 @@ def read_txt_dataframe(txtPath: str, sep: str=' ') -> pd.DataFrame:
     #df = df.reset_index()
     df.columns = ['image1', 'image2']
     return df  
+
+def config_flatten(config, fconfig):
+    for key in config:
+        if isinstance(config[key], dict):
+            fconfig = config_flatten(config[key], fconfig)
+        else:
+            fconfig[key] = config[key]
+    return fconfig
+
+def config_log(config, keys):
+    log = {}
+    for key in keys:
+        log[key] = config[key]
+    return log

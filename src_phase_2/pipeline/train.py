@@ -13,6 +13,7 @@ from tqdm import tqdm
 from numpy.random.mtrand import RandomState
 from sklearn.model_selection import KFold
 
+import wandb 
 
 #import apex
 import torch
@@ -144,19 +145,6 @@ def valid_epoch(epoch, model, loss_function, valid_loader, device):
             progress_bar.set_description(description)
     return accum_acc / num_samples, accum_loss / num_samples
 
-def config_flatten(config, fconfig):
-    for key in config:
-        if isinstance(config[key], dict):
-            fconfig = config_flatten(config[key], fconfig)
-        else:
-            fconfig[key] = config[key]
-    return fconfig
-
-def config_log(config, keys):
-    log = {}
-    for key in keys:
-        log[key] = config[key]
-    return log
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -178,8 +166,7 @@ if __name__ == '__main__':
     _config_log = config_log(fconfig, ['network', 'train_batch', 'valid_batch', 'image_size',
                                       'epochs', 'lr', 'scheduler', 'margin', 'contrastive_thresh',
                                       'data_path'])
-    if config['wandb']:   
-        import wandb              
+    if config['wandb']:             
         wandb.init(project="fp-test",
                 reinit=True,
                 config=fconfig,

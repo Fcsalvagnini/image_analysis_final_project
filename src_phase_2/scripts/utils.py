@@ -2,6 +2,15 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+
+def config_flatten(config, fconfig):
+    for key in config:
+        if isinstance(config[key], dict):
+            fconfig = config_flatten(config[key], fconfig)
+        else:
+            fconfig[key] = config[key]
+    return fconfig
+
 def export_learning_curves(monitoring_metrics, output_folder):
     for metric in monitoring_metrics.keys():
         metrics_on_train = np.array(

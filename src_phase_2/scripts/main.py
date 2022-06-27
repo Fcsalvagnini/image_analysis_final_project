@@ -1,4 +1,4 @@
-from utils import export_learning_curves
+from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicTransformations, BasicDataset
@@ -114,13 +114,12 @@ def run_train_epoch(model, optimizer, criterion, loader,
             progress_bar.set_postfix(
                 desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
             )
+    epoch_loss = (running_loss / len(loader)).detach().numpy()
+    epoch_acc = (running_accuracy / len(loader)).detach().numpy()  
+    monitoring_metrics["loss"]["train"].append(epoch_loss)
+    monitoring_metrics["accuracy"]["train"].append(epoch_acc)
 
-    monitoring_metrics["loss"]["train"].append(
-        (running_loss / len(loader)).detach().numpy()
-    )
-    monitoring_metrics["accuracy"]["train"].append(
-        (running_accuracy / len(loader)).detach().numpy()
-    )
+    return epoch_loss, epoch_acc
 
 
 def run_validation(model, criterion, loader, monitoring_metrics, 
@@ -145,14 +144,12 @@ def run_validation(model, criterion, loader, monitoring_metrics,
                 progress_bar.set_postfix(
                     desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
                 )
+    epoch_loss = (running_loss / len(loader)).detach().numpy()
+    epoch_acc = (running_accuracy / len(loader)).detach().numpy()  
+    monitoring_metrics["loss"]["validation"].append(epoch_loss)
+    monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
 
-        monitoring_metrics["loss"]["validation"].append(
-            running_loss / len(loader)
-        )
-        monitoring_metrics["accuracy"]["validation"].append(
-            running_accuracy / len(loader)
-        )
-
+    return epoch_loss, epoch_acc
 
 def run_training_experiment(model, train_loader, validation_loader, optimizer,
                             criterion, configs
@@ -161,16 +158,20 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
         "loss": {"train": [], "validation": []},
         "accuracy": {"train": [], "validation": []}
     }
-
+    if configs['wandb']:
+            wandb.watch(model, criterion, log="all", log_freq=1)
     for epoch in range(1, configs["epochs"] + 1):
-        run_train_epoch(
+        train_loss, train_acc = run_train_epoch(
             model, optimizer, criterion, train_loader, monitoring_metrics,
             epoch,  batch_size=configs["batch_size"] 
         )
-        run_validation(
+        valid_loss, valid_acc = run_validation(
             model, criterion, validation_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
+        if configs['wandb']:
+                wandb.log({'train_acc': train_acc, 'train_loss': train_loss,
+                        'valid_acc': valid_acc, 'valid_loss': valid_loss})
 
     export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
     torch.save(model, configs["path_to_save_model"])
@@ -188,6 +189,13 @@ if __name__ == "__main__":
     model, train_loader, validation_loader, optimizer, criterion = experiment_factory(configurations)
 
     #summary(model)
+    fconfigurations = {}
+    fconfigurations = config_flatten(configurations, fconfigurations)
+    if configurations['wandb']:                
+        wandb.init(project="fp-scripts",
+                reinit=True,
+                config=fconfigurations,
+                notes="Testing wandb implementation")
 
     run_training_experiment(
         model, train_loader, validation_loader, optimizer,

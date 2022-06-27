@@ -33,7 +33,9 @@ def write_comparisons(
         images_by_false_pair = 3
 
     comparisons_to_write_to_txt = []
-    for subject in subjects:
+    sizeSubjects = len(subjects)
+    for i, subject in enumerate(subjects):
+        print(f'[INFO] {i+1}/{sizeSubjects}\t', end='\r')
         subject_images = [
             image for image in images_list if subject in image
         ]
