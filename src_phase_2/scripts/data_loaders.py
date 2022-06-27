@@ -3,12 +3,13 @@ from torch_snippets import Dataset, read
 import os
 import numpy as np
 
+
 class BasicTransformations:
     """Rotate by one of the given angles."""
 
-    def __init__(self, image_size=[300, 300], affine_degrees=5, 
-            affine_translate=(0.01, 0.02), affine_scale=(0.9, 1.1)
-        ):
+    def __init__(self, image_size=[300, 300], affine_degrees=5,
+                 affine_translate=(0.01, 0.02), affine_scale=(0.9, 1.1)
+                 ):
         self.image_size = image_size
         self.affine_degrees = affine_degrees
         self.affine_translate = affine_translate
@@ -27,20 +28,21 @@ class BasicTransformations:
 
         return transformations_composition
 
+
 class BasicDataset(Dataset):
-    def __init__(self, images_folder, compare_file, transform = None, mode=None):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None):
         self.transform = transform
         self.mode = mode
 
         with open(compare_file, "r") as file:
             lines = file.read().splitlines()
         self.pairs = list(
-            map(lambda line : line.split(" "), lines)
+            map(lambda line: line.split(" "), lines)
         )
 
         self.images_folder = images_folder
 
-    def __getitem__(self,ix):
+    def __getitem__(self, ix):
         image_1 = self.pairs[ix][0]
         image_2 = self.pairs[ix][1]
         person_1 = image_1.split("_")[0]

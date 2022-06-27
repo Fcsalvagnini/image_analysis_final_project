@@ -6,12 +6,14 @@ import numpy as np
 import itertools
 import random
 
+
 def get_fingerprint_subjects(images_list):
     subjects = np.unique(list(
-        map(lambda img_name : img_name.split("_")[0], images_list)
+        map(lambda img_name: img_name.split("_")[0], images_list)
     ))
 
     return subjects
+
 
 def get_all_possible_comparisons(list_1, list_2):
     comparisons = []
@@ -25,10 +27,11 @@ def get_all_possible_comparisons(list_1, list_2):
 
     return comparisons
 
+
 def write_comparisons(
         subjects, false_pairs_by_subject, images_by_false_pair,
         images_list, output_file
-    ):
+):
     if images_by_false_pair > 3:
         images_by_false_pair = 3
 
@@ -44,7 +47,7 @@ def write_comparisons(
             subject_images, subject_images
         )
 
-        other_subjects = subjects[subjects!=subject]
+        other_subjects = subjects[subjects != subject]
         if false_pairs_by_subject > len(other_subjects):
             false_pairs_by_subject = len(other_subjects)
         other_subjects = random.sample(list(other_subjects), false_pairs_by_subject)
@@ -53,7 +56,7 @@ def write_comparisons(
             other_subject_images = [
                 image for image in images_list if other_subject in image
             ]
-            other_subject_images =random.sample(other_subject_images, images_by_false_pair)
+            other_subject_images = random.sample(other_subject_images, images_by_false_pair)
 
             comparisons_to_write_to_txt += get_all_possible_comparisons(
                 subject_images, other_subject_images
@@ -65,6 +68,7 @@ def write_comparisons(
     with open(output_file, "w") as file:
         file.write(f"{n_comparisons}\n")
         file.writelines(comparison + "\n" for comparison in comparisons_to_write_to_txt)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Registry Configuration Generator")
@@ -92,22 +96,22 @@ if __name__ == "__main__":
     # Separate subjects by subset (Train,validation and test)
     fingerprint_subjects = get_fingerprint_subjects(images_list)
 
-
     if not args.split_data:
         write_comparisons(fingerprint_subjects,
-                    args.false_pairs,
-                    args.images_by_false_pair,
-                    images_list,
-                    args.output_file
-        )
+                          args.false_pairs,
+                          args.images_by_false_pair,
+                          images_list,
+                          args.output_file
+                          )
     else:
         np.random.seed(789)
         np.random.shuffle(fingerprint_subjects)
 
         subsets = {
-            "train" : fingerprint_subjects[: int(0.7 * len(fingerprint_subjects))],
-            "validation" : fingerprint_subjects[int(0.7 * len(fingerprint_subjects)) : int(0.85 * len(fingerprint_subjects))],
-            "test" : fingerprint_subjects[int(0.85 * len(fingerprint_subjects)):]
+            "train": fingerprint_subjects[: int(0.7 * len(fingerprint_subjects))],
+            "validation": fingerprint_subjects[
+                          int(0.7 * len(fingerprint_subjects)): int(0.85 * len(fingerprint_subjects))],
+            "test": fingerprint_subjects[int(0.85 * len(fingerprint_subjects)):]
         }
 
         basename = os.path.basename(args.output_file)
@@ -115,14 +119,14 @@ if __name__ == "__main__":
 
         for subset in subsets.keys():
             output_file = f"{filename}_{subset}{extension}"
-            
+
             folders_structure = list(os.path.split(args.output_file))
             folders_structure[-1] = output_file
             output_file = os.path.join(*folders_structure)
-        
+
             write_comparisons(subsets[subset],
-                        args.false_pairs,
-                        args.images_by_false_pair,
-                        images_list,
-                        output_file
-            )
+                              args.false_pairs,
+                              args.images_by_false_pair,
+                              images_list,
+                              output_file
+                              )

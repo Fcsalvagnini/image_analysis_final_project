@@ -21,3 +21,5 @@ src_phase_2/train_comparisons.txt
 src_phase_2/pipeline/wandb/
 src_phase_2/scripts/wandb/
 src_phase_2/wandb/
+src_phase_2/models/
+.idea/

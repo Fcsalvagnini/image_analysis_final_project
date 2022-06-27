@@ -11,6 +11,7 @@ def config_flatten(config, fconfig):
             fconfig[key] = config[key]
     return fconfig
 
+
 def export_learning_curves(monitoring_metrics, output_folder):
     for metric in monitoring_metrics.keys():
         metrics_on_train = np.array(
@@ -30,9 +31,5 @@ def export_learning_curves(monitoring_metrics, output_folder):
 
         plt.tight_layout()
         os.makedirs(output_folder, exist_ok=True)
-        plt.savefig(os.path.join(output_folder, f"{metric}.png"),dpi=600)
+        plt.savefig(os.path.join(output_folder, f"{metric}.png"), dpi=600)
         plt.close()
-
-
-
-

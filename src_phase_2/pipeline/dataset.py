@@ -44,4 +44,3 @@ class FingerprintDataset(Dataset):
 
     def __len__(self):
         return len(self.pairs_df)
-            

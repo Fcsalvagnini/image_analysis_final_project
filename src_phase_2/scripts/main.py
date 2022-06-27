@@ -2,15 +2,17 @@ from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicTransformations, BasicDataset
+from save_best_model import SaveBestModel
 from losses import ContrastiveLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese
-from torchsummary import summary
+from constants import *
 from tqdm import trange
 import gc
 import yaml
+import wandb
 import argparse
 
-import wandb
+save_best_model = SaveBestModel()
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -112,17 +114,17 @@ def run_train_epoch(model, optimizer, criterion, loader,
             running_accuracy += accuracy.cpu()
 
             progress_bar.set_postfix(
-                desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
+                desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3f} - Acc {running_accuracy/(batch_idx + 1):.3f}"
             )
     epoch_loss = (running_loss / len(loader)).detach().numpy()
-    epoch_acc = (running_accuracy / len(loader)).detach().numpy()  
+    epoch_acc = (running_accuracy / len(loader)).detach().numpy()
     monitoring_metrics["loss"]["train"].append(epoch_loss)
     monitoring_metrics["accuracy"]["train"].append(epoch_acc)
 
     return epoch_loss, epoch_acc
 
 
-def run_validation(model, criterion, loader, monitoring_metrics, 
+def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
         epoch, batch_size):
     with torch.no_grad():
         torch.cuda.empty_cache()
@@ -142,10 +144,18 @@ def run_validation(model, criterion, loader, monitoring_metrics,
                 running_accuracy += accuracy.cpu()
 
                 progress_bar.set_postfix(
-                    desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3e} - Acc {running_accuracy/(batch_idx + 1):.3e}"
+                    desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3f} - Acc {running_accuracy/(batch_idx + 1):.3f}"
                 )
+
+        accuracy_valid = (running_accuracy / (batch_idx + 1))
+        save_best_model(accuracy_valid,
+                        epoch,
+                        model,
+                        optimizer,
+                        criterion)
+
     epoch_loss = (running_loss / len(loader)).detach().numpy()
-    epoch_acc = (running_accuracy / len(loader)).detach().numpy()  
+    epoch_acc = (running_accuracy / len(loader)).detach().numpy()
     monitoring_metrics["loss"]["validation"].append(epoch_loss)
     monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
 
@@ -166,7 +176,7 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
             epoch,  batch_size=configs["batch_size"] 
         )
         valid_loss, valid_acc = run_validation(
-            model, criterion, validation_loader, monitoring_metrics,
+            model, optimizer, criterion, validation_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
         if configs['wandb']:
@@ -191,7 +201,7 @@ if __name__ == "__main__":
     #summary(model)
     fconfigurations = {}
     fconfigurations = config_flatten(configurations, fconfigurations)
-    if configurations['wandb']:                
+    if configurations['wandb']:
         wandb.init(project="fp-scripts",
                 reinit=True,
                 config=fconfigurations,

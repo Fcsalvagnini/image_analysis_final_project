@@ -5,8 +5,9 @@ from torch import nn
 from torch import Tensor
 from einops import rearrange, reduce, repeat
 from einops.layers.torch import Rearrange, Reduce
+from constants import *
 
-with open('configs/config_vit.yaml', 'r') as file:
+with open(f'{ABS_PATH}/scripts/configs/config_vit.yaml', 'r') as file:
     parameters = yaml.safe_load(file)
 
 

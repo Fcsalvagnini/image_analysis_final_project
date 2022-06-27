@@ -1,0 +1,1 @@
+ABS_PATH = '/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/src_phase_2'
