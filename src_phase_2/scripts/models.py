@@ -44,6 +44,31 @@ class ViTSiamese(nn.Module):
         return output_1, output_2
 
 
+class ViTSiameseTriplet(nn.Module):
+    def __init__(self,
+                 in_channels: int,
+                 patch_size: int,
+                 emb_size: int,
+                 img_size: int,
+                 depth: int,
+                 **kwargs):
+        super(ViTSiameseTriplet, self).__init__()
+
+        self.vit_transformer = ViT(in_channels,
+                                   patch_size,
+                                   emb_size,
+                                   img_size,
+                                   depth,
+                                   **kwargs)
+
+    def forward(self, input_anchor, input_pos, input_neg):
+        output_anchor = self.vit_transformer(input_anchor)
+        output_pos = self.vit_transformer(input_pos)
+        output_neg = self.vit_transformer(input_neg)
+
+        return output_anchor, output_pos, output_neg
+
+
 def ConvBlock(channels_in, channels_out, kernel_size=3):
     return nn.Sequential(
         nn.Conv2d(channels_in, channels_out,

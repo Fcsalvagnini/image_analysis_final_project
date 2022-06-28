@@ -1,10 +1,10 @@
 from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
-from data_loaders import BasicTransformations, BasicDataset
+from data_loaders import BasicTransformations, BasicDataset, BasicDatasetTriplet
 from save_best_model import SaveBestModel
-from losses import ContrastiveLoss
-from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese
+from losses import ContrastiveLoss, TripletLoss
+from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
 from constants import *
 from tqdm import trange
 import gc
@@ -20,10 +20,12 @@ FACTORY_DICT = {
     "model": {
         "SimpleConvSiameseNN": SimpleConvSiameseNN,
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
-        "ViTSiamese": ViTSiamese
+        "ViTSiamese": ViTSiamese,
+        "ViTSiameseTriplet": ViTSiameseTriplet
     },
     "dataset": {
-        "BasicDataset": BasicDataset
+        "BasicDataset": BasicDataset,
+        "BasicDatasetTriplet": BasicDatasetTriplet
     },
     "transformation": {
         "BasicTransformations": BasicTransformations
@@ -32,7 +34,8 @@ FACTORY_DICT = {
         "Adam": optim.Adam
     },
     "loss": {
-        "ContrastiveLoss": ContrastiveLoss
+        "ContrastiveLoss": ContrastiveLoss,
+        "TripletLoss": TripletLoss
     }
 }
 
@@ -95,18 +98,22 @@ def parse_yaml_file(yaml_path):
     return configurations
 
 
-def run_train_epoch(model, optimizer, criterion, loader, 
-        monitoring_metrics, epoch, batch_size):
+def run_train_epoch(model, optimizer, criterion, loader,
+                    monitoring_metrics, epoch, batch_size):
     model.train()
     model.to(DEVICE)
     running_loss = 0
     running_accuracy = 0
     with trange(len(loader), desc='Train Loop') as progress_bar:
         for batch_idx, batch in zip(progress_bar, loader):
-            image_1, image_2, labels = [data.to(DEVICE) for data in batch]
+            # image_1, image_2, labels = [data.to(DEVICE) for data in batch]
+            # optimizer.zero_grad()
+            # features_1, features_2 = model(image_1, image_2)
+            # loss, accuracy = criterion(features_1, features_2, labels)
+            image_anchor, image_pos, image_neg = [data.to(DEVICE) for data in batch]
             optimizer.zero_grad()
-            features_1, features_2 = model(image_1, image_2)
-            loss, accuracy = criterion(features_1, features_2, labels)
+            image_anchor, image_pos, image_neg = model(image_anchor, image_pos, image_neg)
+            loss, accuracy = criterion(image_anchor, image_pos, image_neg)
             loss.backward()
             optimizer.step()
 
@@ -114,7 +121,7 @@ def run_train_epoch(model, optimizer, criterion, loader,
             running_accuracy += accuracy.cpu()
 
             progress_bar.set_postfix(
-                desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3f} - Acc {running_accuracy/(batch_idx + 1):.3f}"
+                desc=f"[Epoch {epoch}] Loss: {running_loss / (batch_idx + 1):.3f} - Acc {running_accuracy / (batch_idx + 1):.3f}"
             )
     epoch_loss = (running_loss / len(loader)).detach().numpy()
     epoch_acc = (running_accuracy / len(loader)).detach().numpy()
@@ -125,7 +132,7 @@ def run_train_epoch(model, optimizer, criterion, loader,
 
 
 def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
-        epoch, batch_size):
+                   epoch, batch_size):
     with torch.no_grad():
         torch.cuda.empty_cache()
         gc.collect()
@@ -144,7 +151,7 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
                 running_accuracy += accuracy.cpu()
 
                 progress_bar.set_postfix(
-                    desc=f"[Epoch {epoch}] Loss: {running_loss/(batch_idx + 1):.3f} - Acc {running_accuracy/(batch_idx + 1):.3f}"
+                    desc=f"[Epoch {epoch}] Loss: {running_loss / (batch_idx + 1):.3f} - Acc {running_accuracy / (batch_idx + 1):.3f}"
                 )
 
         accuracy_valid = (running_accuracy / (batch_idx + 1))
@@ -161,6 +168,7 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
 
     return epoch_loss, epoch_acc
 
+
 def run_training_experiment(model, train_loader, validation_loader, optimizer,
                             criterion, configs
                             ):
@@ -169,19 +177,19 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
         "accuracy": {"train": [], "validation": []}
     }
     if configs['wandb']:
-            wandb.watch(model, criterion, log="all", log_freq=1)
+        wandb.watch(model, criterion, log="all", log_freq=1)
     for epoch in range(1, configs["epochs"] + 1):
         train_loss, train_acc = run_train_epoch(
             model, optimizer, criterion, train_loader, monitoring_metrics,
-            epoch,  batch_size=configs["batch_size"] 
+            epoch, batch_size=configs["batch_size"]
         )
         valid_loss, valid_acc = run_validation(
             model, optimizer, criterion, validation_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
         if configs['wandb']:
-                wandb.log({'train_acc': train_acc, 'train_loss': train_loss,
-                        'valid_acc': valid_acc, 'valid_loss': valid_loss})
+            wandb.log({'train_acc': train_acc, 'train_loss': train_loss,
+                       'valid_acc': valid_acc, 'valid_loss': valid_loss})
 
     export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
     torch.save(model, configs["path_to_save_model"])
@@ -198,14 +206,14 @@ if __name__ == "__main__":
 
     model, train_loader, validation_loader, optimizer, criterion = experiment_factory(configurations)
 
-    #summary(model)
+    # summary(model)
     fconfigurations = {}
     fconfigurations = config_flatten(configurations, fconfigurations)
     if configurations['wandb']:
         wandb.init(project="fp-scripts",
-                reinit=True,
-                config=fconfigurations,
-                notes="Testing wandb implementation")
+                   reinit=True,
+                   config=fconfigurations,
+                   notes="Testing wandb implementation")
 
     run_training_experiment(
         model, train_loader, validation_loader, optimizer,
