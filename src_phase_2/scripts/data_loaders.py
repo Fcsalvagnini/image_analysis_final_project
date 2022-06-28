@@ -2,6 +2,7 @@ from torchvision import transforms
 from torch_snippets import Dataset, read
 import os
 import numpy as np
+from utils import create_triplet
 
 
 class BasicTransformations:
@@ -67,3 +68,47 @@ class BasicDataset(Dataset):
 
     def __len__(self):
         return len(self.pairs)
+
+
+class BasicDatasetTriplet(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None):
+        self.transform = transform
+        self.mode = mode
+
+        self.triplets = create_triplet(compare_file)
+
+        self.images_folder = images_folder
+
+    def __getitem__(self, ix):
+        image_anchor = self.triplets[ix][0]
+        image_pos = self.triplets[ix][1]
+        image_neg = self.triplets[ix][2]
+        image_anchor = read(
+            os.path.join(self.images_folder, image_anchor), mode=self.mode
+        )
+        image_pos = read(
+            os.path.join(self.images_folder, image_pos), mode=self.mode
+        )
+        image_neg = read(
+            os.path.join(self.images_folder, image_neg), mode=self.mode
+        )
+
+        if self.transform:
+            image_anchor = self.transform(image_anchor)
+            image_pos = self.transform(image_pos)
+            image_neg = self.transform(image_neg)
+
+        return image_anchor, image_pos, image_neg
+
+    def __len__(self):
+        return len(self.triplets)
+
+
+if __name__ == "__main__":
+    basic_dataset = BasicDatasetTriplet("../data/registred_images_v1_train/",
+                                        "../compare_files/compare_splited_v1_train_new.txt")
+
+    # basic_dataset = BasicDataset("../data/registred_images_v1_train/",
+    #                                     "../compare_files/compare_splited_v1_train_new.txt")
+
+    print(basic_dataset[0])
