@@ -1,7 +1,8 @@
 from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
-from data_loaders import BasicTransformations, BasicDataset, BasicDatasetTriplet
+from data_loaders import BasicDataset, BasicStratifiedDataset, \
+                        BasicDatasetTriplet, BasicTransformations
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
@@ -25,6 +26,7 @@ FACTORY_DICT = {
     },
     "dataset": {
         "BasicDataset": BasicDataset,
+        "BasicStratifiedDataset": BasicStratifiedDataset,
         "BasicDatasetTriplet": BasicDatasetTriplet
     },
     "transformation": {
@@ -67,10 +69,10 @@ def experiment_factory(configs):
     train_dataset = get_dataset(train_dataset_configs, configs)
     validation_dataset = get_dataset(validation_dataset_configs, configs)
     train_loader = DataLoader(
-        train_dataset, batch_size=configs["batch_size"], shuffle=True
+        train_dataset, batch_size=configs["batch_size"], shuffle=False
     )
     validation_loader = DataLoader(
-        validation_dataset, batch_size=configs["batch_size"], shuffle=True
+        validation_dataset, batch_size=configs["batch_size"], shuffle=False
     )
 
     # Build model
@@ -106,14 +108,15 @@ def run_train_epoch(model, optimizer, criterion, loader,
     running_accuracy = 0
     with trange(len(loader), desc='Train Loop') as progress_bar:
         for batch_idx, batch in zip(progress_bar, loader):
-            # image_1, image_2, labels = [data.to(DEVICE) for data in batch]
-            # optimizer.zero_grad()
-            # features_1, features_2 = model(image_1, image_2)
-            # loss, accuracy = criterion(features_1, features_2, labels)
-            image_anchor, image_pos, image_neg = [data.to(DEVICE) for data in batch]
+            # if        
+            image_1, image_2, labels = [data.to(DEVICE) for data in batch]
             optimizer.zero_grad()
-            image_anchor, image_pos, image_neg = model(image_anchor, image_pos, image_neg)
-            loss, accuracy = criterion(image_anchor, image_pos, image_neg)
+            features_1, features_2 = model(image_1, image_2)
+            loss, accuracy = criterion(features_1, features_2, labels)
+            # image_anchor, image_pos, image_neg = [data.to(DEVICE) for data in batch]
+            # optimizer.zero_grad()
+            # image_anchor, image_pos, image_neg = model(image_anchor, image_pos, image_neg)
+            # loss, accuracy = criterion(image_anchor, image_pos, image_neg)
             loss.backward()
             optimizer.step()
 

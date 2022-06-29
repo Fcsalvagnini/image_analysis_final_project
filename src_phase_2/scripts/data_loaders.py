@@ -2,8 +2,8 @@ from torchvision import transforms
 from torch_snippets import Dataset, read
 import os
 import numpy as np
+import random
 from utils import create_triplet
-
 
 class BasicTransformations:
     """Rotate by one of the given angles."""
@@ -69,6 +69,76 @@ class BasicDataset(Dataset):
     def __len__(self):
         return len(self.pairs)
 
+class BasicStratifiedDataset(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None,
+                    stratify_each_epoch=False
+                ):
+        self.images_folder = images_folder
+        self.transform = transform
+        self.mode = mode
+        self.stratify_each_epoch = stratify_each_epoch
+
+        with open(compare_file, "r") as file:
+            lines = file.read().splitlines()
+        pairs = list(
+            map(lambda line: line.split(" "), lines)
+        )
+
+        # Get all similar and dissimilar pairs
+        self.similar_pairs, self.dissimilar_pairs = self.get_pairs(pairs)
+        self.n_similar_pairs = len(self.similar_pairs)
+
+    def stratify_dataset(self):
+        pairs = self.similar_pairs + random.sample(
+                                            self.dissimilar_pairs,
+                                            self.n_similar_pairs
+                                        )
+        np.random.shuffle(pairs)
+
+        return pairs
+
+    def get_pairs(self, pairs):
+        similar_pairs = []
+        dissimilar_pairs = []
+        for pair in pairs:
+            img_1_subject = pair[0].split("_")[0]
+            img_2_subject = pair[1].split("_")[0]
+            if img_1_subject == img_2_subject:
+                similar_pairs.append(pair)
+            else:
+                dissimilar_pairs.append(pair)
+
+        return similar_pairs, dissimilar_pairs
+    
+    def __getitem__(self, ix):
+        # Stratify and shuffle on first batch ()
+        if ix == 0 and self.stratify_each_epoch:
+            self.pairs = self.stratify_dataset()
+
+        image_1 = self.pairs[ix][0]
+        image_2 = self.pairs[ix][1]
+        person_1 = image_1.split("_")[0]
+        person_2 = image_2.split("_")[0]
+
+        true_label = 1 if person_1 == person_2 else 0
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+            image_2 = np.expand_dims(image_2, 2)
+
+        if self.transform:
+            image_1 = self.transform(image_1)
+            image_2 = self.transform(image_2)
+
+        return image_1, image_2, np.array([true_label])
+
+    def __len__(self):
+        return len(self.similar_pairs) * 2
 
 class BasicDatasetTriplet(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None):
