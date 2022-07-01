@@ -3,7 +3,8 @@ from torch_snippets import Dataset, read
 import os
 import numpy as np
 import random
-from utils import create_triplet
+from utils import create_triplet, create_pairs_balanced
+
 
 class BasicTransformations:
     """Rotate by one of the given angles."""
@@ -69,10 +70,11 @@ class BasicDataset(Dataset):
     def __len__(self):
         return len(self.pairs)
 
+
 class BasicStratifiedDataset(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None,
-                    stratify_each_epoch=False
-                ):
+                 stratify_each_epoch=False
+                 ):
         self.images_folder = images_folder
         self.transform = transform
         self.mode = mode
@@ -90,9 +92,9 @@ class BasicStratifiedDataset(Dataset):
 
     def stratify_dataset(self):
         pairs = self.similar_pairs + random.sample(
-                                            self.dissimilar_pairs,
-                                            self.n_similar_pairs
-                                        )
+            self.dissimilar_pairs,
+            self.n_similar_pairs
+        )
         np.random.shuffle(pairs)
 
         return pairs
@@ -109,7 +111,7 @@ class BasicStratifiedDataset(Dataset):
                 dissimilar_pairs.append(pair)
 
         return similar_pairs, dissimilar_pairs
-    
+
     def __getitem__(self, ix):
         # Stratify and shuffle on first batch ()
         if ix == 0 and self.stratify_each_epoch:
@@ -139,6 +141,7 @@ class BasicStratifiedDataset(Dataset):
 
     def __len__(self):
         return len(self.similar_pairs) * 2
+
 
 class BasicDatasetTriplet(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None):
@@ -174,11 +177,44 @@ class BasicDatasetTriplet(Dataset):
         return len(self.triplets)
 
 
-if __name__ == "__main__":
-    basic_dataset = BasicDatasetTriplet("../data/registred_images_v1_train/",
-                                        "../compare_files/compare_splited_v1_train_new.txt")
+class DatasetRawTraining(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None):
+        self.transform = transform
+        self.mode = mode
 
-    # basic_dataset = BasicDataset("../data/registred_images_v1_train/",
+        self.pairs = create_pairs_balanced(compare_file)
+
+        self.images_folder = images_folder
+
+    def __getitem__(self, idx):
+        image_1 = self.pairs[idx][0]
+        image_2 = self.pairs[idx][1]
+        true_label = self.pairs[idx][2]
+
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+
+        if self.transform:
+            image_1 = self.transform(image_1)
+            image_2 = self.transform(image_2)
+
+        return image_1, image_2, np.array([true_label])
+
+    def __len__(self):
+        return len(self.pairs)
+
+if __name__ == "__main__":
+    # basic_dataset = BasicDatasetTriplet("../data/registred_images_v1_train/",
     #                                     "../compare_files/compare_splited_v1_train_new.txt")
 
+    basic_dataset = BasicDataset("../data/registred_images_v1_train/",
+                                 "../compare_files/compare_splited_v1_train_new.txt")
+
+    # basic_dataset = DatasetRawTraining('/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/images_02/train/',
+    #                                    '/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/images_02/train/')
+    #
     print(basic_dataset[0])

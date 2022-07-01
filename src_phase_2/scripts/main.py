@@ -2,7 +2,9 @@ from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
-                        BasicDatasetTriplet, BasicTransformations
+                        BasicDatasetTriplet, BasicTransformations, \
+                        DatasetRawTraining
+
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
@@ -27,7 +29,8 @@ FACTORY_DICT = {
     "dataset": {
         "BasicDataset": BasicDataset,
         "BasicStratifiedDataset": BasicStratifiedDataset,
-        "BasicDatasetTriplet": BasicDatasetTriplet
+        "BasicDatasetTriplet": BasicDatasetTriplet,
+        "DatasetRawTraining": DatasetRawTraining
     },
     "transformation": {
         "BasicTransformations": BasicTransformations

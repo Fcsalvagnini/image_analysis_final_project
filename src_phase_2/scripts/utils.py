@@ -77,6 +77,35 @@ def create_triplet(file):
         return triplets
 
 
+def create_pairs_balanced(compare_dir, id_image=8):
+    list_label_images = []
+
+    list_images = os.listdir(compare_dir)
+
+    len_dataset_train = len(list_images)
+
+    idx_pos = random.randint(0, len_dataset_train - 1)
+
+    for id_balanced in range(len_dataset_train):
+        if id_balanced % 2 == 0:
+            label = 1
+
+            while list_images[id_balanced][:id_image] != list_images[idx_pos][:id_image]:
+                idx_pos = random.randint(0, len_dataset_train - 1)
+
+            list_label_images.append((list_images[id_balanced], list_images[idx_pos], label))
+        else:
+
+            label = 0
+
+            while list_images[id_balanced][:id_image] == list_images[idx_pos][:id_image]:
+                idx_pos = random.randint(0, len_dataset_train - 1)
+
+            list_label_images.append((list_images[id_balanced], list_images[idx_pos], label))
+
+    return list_label_images
+
+
 if __name__ == '__main__':
     triplas = create_triplet("../compare_files/compare_splited_v1_train_new.txt")
     for i in range(5, 20):

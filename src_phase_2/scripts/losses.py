@@ -18,8 +18,8 @@ class ContrastiveLoss(torch.nn.Module):
             output_1, output_2, keepdim=True
         )
         loss_contrastive = torch.mean((1 - label) * torch.pow(euclidean_distance, 2) / 2 +
-                                      (label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0),
-                                                          2)) / 2
+                                      label * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0),
+                                                        2)) / 2
         acc = ((euclidean_distance > self.contrastive_threshold) == label).float().mean()
         return loss_contrastive, acc
 
