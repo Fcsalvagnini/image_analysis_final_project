@@ -4,7 +4,9 @@ import torch
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
     BasicDatasetTriplet, BasicTransformations, \
     DatasetRawTraining
-from utils import create_pairs_balanced
+from torch_snippets import read
+import numpy as np
+import os
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
@@ -112,7 +114,7 @@ def run_train_epoch(model, optimizer, criterion, loader,
     with trange(len(loader), desc='Train Loop') as progress_bar:
         for batch_idx, batch in zip(progress_bar, loader):
             # if        
-            image_1, image_2, labels, _, _ = [data.to(DEVICE) for data in batch]
+            image_1, image_2, labels = [data.to(DEVICE) for data in batch]
             optimizer.zero_grad()
             features_1, features_2 = model(image_1, image_2)
             loss, accuracy = criterion(features_1, features_2, labels)
@@ -180,19 +182,35 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
 
 
 def run_validation_ml(model, optimizer, criterion, loader, monitoring_metrics,
-                      epoch, batch_size):
+                      epoch, batch_size, mode, transform):
     valid_dataset = []
 
     with torch.no_grad():
+        list_features_valid = []
+        acess_path = '/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/validation/'
+
         torch.cuda.empty_cache()
         gc.collect()
-    #
-    #     model.to(DEVICE)
+        list_dir_imgs = os.listdir(acess_path)
+
         model.eval()
-        running_loss = 0
-        running_accuracy = 0
-        list_validation = create_pairs_balanced(compare_file)
-        for
+        for img in list_dir_imgs:
+            image = read(
+                os.path.join(acess_path, img)
+            )
+
+            if not mode:
+                image = np.expand_dims(image, 2)
+
+            if transform:
+                image = transform(image)
+
+            features, _ = model(image, image)
+            list_features_valid.append(features)
+
+        labels = [x[:8] for x in list_dir_imgs]
+
+        acc = avaliable_KNN(list_features_valid, labels)
     #     with trange(len(loader), desc='Validation Loop') as progress_bar:
     #         for batch_idx, batch in zip(progress_bar, loader):
     #             image_1, image_2, labels = [data.to(DEVICE) for data in batch]
@@ -209,11 +227,11 @@ def run_validation_ml(model, optimizer, criterion, loader, monitoring_metrics,
     #
     #     print(valid_dataset)
     #     accuracy_valid = (running_accuracy / (batch_idx + 1))
-        # save_best_model(accuracy_valid,
-        #                 epoch,
-        #                 model,
-        #                 optimizer,
-        #                 criterion)
+    # save_best_model(accuracy_valid,
+    #                 epoch,
+    #                 model,
+    #                 optimizer,
+    #                 criterion)
 
     # epoch_loss = (running_loss / len(loader)).detach().numpy()
     # epoch_acc = (running_accuracy / len(loader)).detach().numpy()
