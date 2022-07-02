@@ -71,6 +71,32 @@ class BasicDataset(Dataset):
         return len(self.pairs)
 
 
+class DatasetValidML(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None):
+        self.transform = transform
+        self.mode = mode
+
+        self.pairs = os.listdir(images_folder)
+
+        self.images_folder = images_folder
+
+    def __getitem__(self, idx):
+        image_1_name = self.pairs[idx]
+        image_1 = read(
+            os.path.join(self.images_folder, image_1_name), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+
+        if self.transform:
+            image_1 = self.transform(image_1)
+
+        return image_1, image_1, image_1_name[:8]
+
+    def __len__(self):
+        return len(self.pairs)
+
+
 class BasicStratifiedDataset(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None,
                  stratify_each_epoch=False
@@ -206,6 +232,7 @@ class DatasetRawTraining(Dataset):
 
     def __len__(self):
         return len(self.pairs)
+
 
 if __name__ == "__main__":
     # basic_dataset = BasicDatasetTriplet("../data/registred_images_v1_train/",

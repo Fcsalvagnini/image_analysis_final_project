@@ -8,7 +8,7 @@ class ContrastiveLoss(torch.nn.Module):
     Based on: http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
     """
 
-    def __init__(self, margin=2.0, contrastive_threshold=1.1):
+    def __init__(self, margin=2.0, contrastive_threshold=0.5):
         super(ContrastiveLoss, self).__init__()
         self.margin = margin
         self.contrastive_threshold = contrastive_threshold

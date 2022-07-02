@@ -1,17 +1,15 @@
 from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
-from data_loaders import BasicDataset, BasicStratifiedDataset, \
-    BasicDatasetTriplet, BasicTransformations, \
-    DatasetRawTraining
-from torch_snippets import read
-import numpy as np
+from data_loaders import BasicDataset, BasicStratifiedDataset, BasicDatasetTriplet, BasicTransformations, DatasetValidML, DatasetRawTraining
 import os
+import numpy as np
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
 from constants import *
 from tqdm import trange
+from ml_classify import avaliable_KNN
 import gc
 import yaml
 import wandb
@@ -32,7 +30,8 @@ FACTORY_DICT = {
         "BasicDataset": BasicDataset,
         "BasicStratifiedDataset": BasicStratifiedDataset,
         "BasicDatasetTriplet": BasicDatasetTriplet,
-        "DatasetRawTraining": DatasetRawTraining
+        "DatasetRawTraining": DatasetRawTraining,
+        "DatasetValidML": DatasetValidML
     },
     "transformation": {
         "BasicTransformations": BasicTransformations
@@ -77,7 +76,7 @@ def experiment_factory(configs):
         train_dataset, batch_size=configs["batch_size"], shuffle=False
     )
     validation_loader = DataLoader(
-        validation_dataset, batch_size=configs["batch_size"], shuffle=False
+        validation_dataset, batch_size=configs["batch_size_valid"], shuffle=False
     )
 
     # Build model
@@ -146,99 +145,37 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
     with torch.no_grad():
         torch.cuda.empty_cache()
         gc.collect()
-
-        model.to(DEVICE)
+        model.to('cpu')
         model.eval()
-        running_loss = 0
-        running_accuracy = 0
         with trange(len(loader), desc='Validation Loop') as progress_bar:
             for batch_idx, batch in zip(progress_bar, loader):
-                image_1, image_2, labels, name_1, name_2 = [data.to(DEVICE) for data in batch]
-                features_1, features_2 = model(image_1, image_2)
-                loss, accuracy = criterion(features_1, features_2, labels)
+                image_1, image_1, labels = [data for data in batch]
+                features_1, features_1 = model(image_1, image_1)
+                acc = avaliable_KNN(features_1, labels)
+                valid_dataset.append(acc)
 
-                running_loss += loss.cpu()
-                running_accuracy += accuracy.cpu()
-
-                progress_bar.set_postfix(
-                    desc=f"[Epoch {epoch}] Loss: {running_loss / (batch_idx + 1):.3f} - Acc {running_accuracy / (batch_idx + 1):.3f}"
-                )
-                valid_dataset.append((name_1, features_1, name_2, features_2, labels))
-
-        print(valid_dataset)
-        accuracy_valid = (running_accuracy / (batch_idx + 1))
+        accuracy_valid = np.array(valid_dataset).mean()
         # save_best_model(accuracy_valid,
         #                 epoch,
         #                 model,
         #                 optimizer,
         #                 criterion)
+    print(accuracy_valid)
+    monitoring_metrics["loss"]["validation"].append(acc)
+    monitoring_metrics["accuracy"]["validation"].append(accuracy_valid)
 
-    epoch_loss = (running_loss / len(loader)).detach().numpy()
-    epoch_acc = (running_accuracy / len(loader)).detach().numpy()
-    monitoring_metrics["loss"]["validation"].append(epoch_loss)
-    monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
-
-    return epoch_loss, epoch_acc
+    return accuracy_valid, accuracy_valid
 
 
 def run_validation_ml(model, optimizer, criterion, loader, monitoring_metrics,
-                      epoch, batch_size, mode, transform):
+                      epoch, batch_size):
     valid_dataset = []
 
     with torch.no_grad():
-        list_features_valid = []
-        acess_path = '/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/validation/'
-
         torch.cuda.empty_cache()
         gc.collect()
-        list_dir_imgs = os.listdir(acess_path)
+        list_dir_imgs = os.listdir('/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/validation/')
 
-        model.eval()
-        for img in list_dir_imgs:
-            image = read(
-                os.path.join(acess_path, img)
-            )
-
-            if not mode:
-                image = np.expand_dims(image, 2)
-
-            if transform:
-                image = transform(image)
-
-            features, _ = model(image, image)
-            list_features_valid.append(features)
-
-        labels = [x[:8] for x in list_dir_imgs]
-
-        acc = avaliable_KNN(list_features_valid, labels)
-    #     with trange(len(loader), desc='Validation Loop') as progress_bar:
-    #         for batch_idx, batch in zip(progress_bar, loader):
-    #             image_1, image_2, labels = [data.to(DEVICE) for data in batch]
-    #             features_1, features_2 = model(image_1, image_2)
-    #             loss, accuracy = criterion(features_1, features_2, labels)
-    #
-    #             running_loss += loss.cpu()
-    #             running_accuracy += accuracy.cpu()
-    #
-    #             progress_bar.set_postfix(
-    #                 desc=f"[Epoch {epoch}] Loss: {running_loss / (batch_idx + 1):.3f} - Acc {running_accuracy / (batch_idx + 1):.3f}"
-    #             )
-    #             valid_dataset.append((name_1, features_1, name_2, features_2, labels))
-    #
-    #     print(valid_dataset)
-    #     accuracy_valid = (running_accuracy / (batch_idx + 1))
-    # save_best_model(accuracy_valid,
-    #                 epoch,
-    #                 model,
-    #                 optimizer,
-    #                 criterion)
-
-    # epoch_loss = (running_loss / len(loader)).detach().numpy()
-    # epoch_acc = (running_accuracy / len(loader)).detach().numpy()
-    # monitoring_metrics["loss"]["validation"].append(epoch_loss)
-    # monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
-
-    return epoch_loss, epoch_acc
 
 
 def run_training_experiment(model, train_loader, validation_loader, optimizer,
@@ -255,7 +192,7 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
             model, optimizer, criterion, train_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
-        valid_loss, valid_acc = run_validation_ml(
+        valid_loss, valid_acc = run_validation(
             model, optimizer, criterion, validation_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
