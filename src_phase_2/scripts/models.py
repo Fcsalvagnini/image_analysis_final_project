@@ -100,6 +100,8 @@ class SimpleConvSiameseNN(nn.Module):
         )
 
     def forward(self, input_1, input_2):
+        print(input_1.shape)
+        print(self.features)
         output_1 = self.features(input_1)
         output_2 = self.features(input_2)
 

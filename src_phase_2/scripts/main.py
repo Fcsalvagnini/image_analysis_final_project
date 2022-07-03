@@ -2,11 +2,11 @@ from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
-                        BasicDatasetTriplet, BasicTransformations, \
-                        DatasetRawTraining
+    BasicDatasetTriplet, BasicTransformations, \
+    DatasetRawTraining
 
 from save_best_model import SaveBestModel
-from losses import ContrastiveLoss, TripletLoss
+from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
 from constants import *
 from tqdm import trange
@@ -40,7 +40,9 @@ FACTORY_DICT = {
     },
     "loss": {
         "ContrastiveLoss": ContrastiveLoss,
-        "TripletLoss": TripletLoss
+        "TripletLoss": TripletLoss,
+        "CosineLoss": CosineLoss,
+        "ContrastiveCosineLoss": ContrastiveCosineLoss
     }
 }
 
