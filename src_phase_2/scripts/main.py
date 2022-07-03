@@ -2,7 +2,7 @@ from utils import export_learning_curves, config_flatten
 from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
-    BasicDatasetTriplet, BasicTransformations, \
+    BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
     DatasetRawTraining
 
 from save_best_model import SaveBestModel
@@ -30,7 +30,8 @@ FACTORY_DICT = {
         "BasicDataset": BasicDataset,
         "BasicStratifiedDataset": BasicStratifiedDataset,
         "BasicDatasetTriplet": BasicDatasetTriplet,
-        "DatasetRawTraining": DatasetRawTraining
+        "DatasetRawTraining": DatasetRawTraining,
+        "BasicDatasetTripletRaw": BasicDatasetTripletRaw
     },
     "transformation": {
         "BasicTransformations": BasicTransformations

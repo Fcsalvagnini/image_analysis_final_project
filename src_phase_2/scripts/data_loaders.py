@@ -1,9 +1,11 @@
 from torchvision import transforms
 from torch_snippets import Dataset, read
+import cv2
 import os
+from skimage.morphology import skeletonize
 import numpy as np
 import random
-from utils import create_triplet, create_pairs_balanced
+from utils import create_triplet, create_pairs_balanced, create_triplets_dir
 
 
 class BasicTransformations:
@@ -175,6 +177,43 @@ class BasicDatasetTriplet(Dataset):
 
     def __len__(self):
         return len(self.triplets)
+
+
+class BasicDatasetTripletRaw(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None):
+        self.transform = transform
+        self.mode = mode
+
+        self.compare_file = compare_file
+
+        self.images_folder = images_folder
+        self.len_dataset = len(os.listdir(compare_file))
+
+    def __getitem__(self, ix):
+        self.triplets = create_triplets_dir(self.compare_file)
+
+        image_anchor = self.triplets[ix][0]
+        image_pos = self.triplets[ix][1]
+        image_neg = self.triplets[ix][2]
+        image_anchor = read(
+            os.path.join(self.images_folder, image_anchor), mode=self.mode
+        )
+        image_pos = read(
+            os.path.join(self.images_folder, image_pos), mode=self.mode
+        )
+        image_neg = read(
+            os.path.join(self.images_folder, image_neg), mode=self.mode
+        )
+
+        if self.transform:
+            image_anchor = self.transform(image_anchor)
+            image_pos = self.transform(image_pos)
+            image_neg = self.transform(image_neg)
+
+        return image_anchor, image_pos, image_neg
+
+    def __len__(self):
+        return self.len_dataset
 
 
 class DatasetRawTraining(Dataset):
