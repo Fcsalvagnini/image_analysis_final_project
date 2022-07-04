@@ -1,17 +1,13 @@
 epochs: 200
-batch_size: 66
+batch_size: 32
 batch_size_valid: 102
 path_to_save_model: "/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/src_phase_2/models/vit_model_siamese.pth"
 path_to_save_report: "../report/dataset_v1/"
 wandb: False
 
 model:
-  ViTSiamese:
-    in_channels: 1
-    patch_size: 16
-    emb_size: 768
-    img_size: 120
-    depth: 5
+  SimpleConvSiameseNN:
+    input_size: !!python/list [ 120, 120 ]
 
 
 train_dataset:

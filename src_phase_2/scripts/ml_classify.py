@@ -9,8 +9,12 @@ def sort_index(l):
 
 
 def avaliable_KNN(list_features_valid, labels):
-    neigh = KNeighborsClassifier(n_neighbors=1)
 
+    x_test = []
+    y_test = []
+    index_list = []
+
+    neigh = KNeighborsClassifier(n_neighbors=1)
     list_features_valid = list_features_valid.numpy()
 
     labels = list(labels)
@@ -19,17 +23,19 @@ def avaliable_KNN(list_features_valid, labels):
 
     X = [list_features_valid[x, :] for x in index_sort]
     Y = [labels[x] for x in index_sort]
+    #train and test
+    Y = [[Y[3*i], Y[3*i + 1], Y[3*i + 2]] for i in range(len(Y)//3)]
+    X = [[X[3*i], X[3*i + 1], X[3*i + 2]] for i in range(len(X)//3)]
 
-    length = len(Y)
-    slice = 0.8
-    slice_train = int(length * slice)
-    slice_test = int(length * (slice - 1))
+    for i in range(len(Y)):
+        y_test.append(Y[i].pop(2))
+        x_test.append(X[i].pop(2))
 
-    x_train = X[:slice_train]
-    y_train = Y[:slice_train]
+    X = sum(X, [])
+    Y = sum(Y, [])
 
-    x_test = X[slice_train:]
-    y_test = Y[slice_train:]
+    x_train = X
+    y_train = Y
 
     neigh.fit(x_train, y_train)
 
