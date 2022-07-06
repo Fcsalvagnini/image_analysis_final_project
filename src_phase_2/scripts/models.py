@@ -1,3 +1,5 @@
+import torch
+import timm
 from torch_snippets import nn
 from vit_transformer import PatchEmbedding, TransformerEncoder
 from torchvision import models
@@ -132,3 +134,43 @@ class PreTrainedVGGSiameseNN(nn.Module):
         output_2 = self.dimensionality_reductor(output_2)
 
         return output_1, output_2
+
+def get_n_out_features(encoder, img_size, nchannels):
+    out_feature = encoder(torch.randn(1, nchannels, img_size, img_size))
+    n_out = 1
+    for dim in out_feature[-1].shape:
+        n_out *= dim
+    return n_out
+
+class SiameseNetworkTimmBackbone(nn.Module):
+    def __init__(self, network:str, image_size:int, nchannels: int, transformers: bool=False):
+        super().__init__()
+        if transformers:
+            model_creator = {'model_name': network, 
+                             "pretrained":True,
+                             "num_classes": 0}
+        else:
+            model_creator = {'model_name': network, 
+                             "pretrained":True,
+                             "features_only": True}
+
+        self.encoder = timm.create_model(**model_creator)
+        
+        for param in self.encoder.parameters():
+            param.requires_grad = False
+        n_out = get_n_out_features(self.encoder, image_size, nchannels)
+
+        self.dimensionality_reductor = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(n_out, 512), nn.ReLU(inplace = True),
+            nn.Linear(512, 256), nn.ReLU(inplace=True),
+            nn.Linear(256, 64)
+        )
+
+    def forward(self, input1, input2):
+        output1 = self.encoder(input1)[-1]
+        output1 = self.dimensionality_reductor(output1)
+        output2 = self.encoder(input2)[-1]
+        output2 = self.dimensionality_reductor(output2)
+
+        return output1, output2

@@ -2,7 +2,7 @@ from constants import *
 import torch
 import yaml
 
-with open(f'{ABS_PATH}/scripts/configs/vit_dataset_balanced.yml', 'r') as file:
+with open(f'configs/vit_dataset_balanced.yml', 'r') as file:
     configs = yaml.load(file, Loader=yaml.FullLoader)
 
 

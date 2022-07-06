@@ -3,11 +3,11 @@ from torch_snippets import DataLoader, optim
 import torch
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
     BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
-    DatasetRawTraining
+    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations
 
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
-from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet
+from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet, SiameseNetworkTimmBackbone
 from constants import *
 from tqdm import trange
 import gc
@@ -24,17 +24,20 @@ FACTORY_DICT = {
         "SimpleConvSiameseNN": SimpleConvSiameseNN,
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
         "ViTSiamese": ViTSiamese,
-        "ViTSiameseTriplet": ViTSiameseTriplet
+        "ViTSiameseTriplet": ViTSiameseTriplet,
+        "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone
     },
     "dataset": {
         "BasicDataset": BasicDataset,
         "BasicStratifiedDataset": BasicStratifiedDataset,
         "BasicDatasetTriplet": BasicDatasetTriplet,
         "DatasetRawTraining": DatasetRawTraining,
-        "BasicDatasetTripletRaw": BasicDatasetTripletRaw
+        "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
+        "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation
     },
     "transformation": {
-        "BasicTransformations": BasicTransformations
+        "BasicTransformations": BasicTransformations,
+        "Albumentation": AlbumentationTransformations
     },
     "optimizer": {
         "Adam": optim.Adam
