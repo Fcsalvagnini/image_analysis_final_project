@@ -29,7 +29,7 @@ class BasicTransformations:
         self.affine_translate = affine_translate
         self.affine_scale = affine_scale
 
-    def get_transformations(self):
+    def get_transformations(self, train=True):
         transformations_composition = transforms.Compose([
             transforms.ToPILImage(),
             transforms.RandomHorizontalFlip(),
@@ -47,33 +47,37 @@ class AlbumentationTransformations:
     def __init__(self, image_size=200):
         self.image_size = image_size
 
-    def get_transformations(self):
-        #def repeat_ch(image, **kwargs):
-        #    return np.stack((image,)*3, axis=-1)
-        return Compose([
-            #Lambda(image=repeat_ch, name='repeat'),
-            Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
-            # Transpose(p=0.5),
-            HorizontalFlip(p=0.5),
-            VerticalFlip(p=0.5),
-            # ShiftScaleRotate(p=0.5),
-            # Perspective(p=0.5),
-            # ElasticTransform(p=0.5),
-            # GridDistortion(p=0.5),
-            # CLAHE(p=0.5),
-            # Cutout(p=0.25),
-            # MotionBlur(p=0.25),
-            # ImageCompression(p=0.5, quality_lower=50, quality_upper=100),
-            # Affine(scale=[0.5, 1.5], p=0.5),
-            Sharpen(p=0.25),
-            # HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
-            # RandomBrightnessContrast(brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5),
-            # CoarseDropout(p=0.5),
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
-            #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
-            ToTensorV2(p=1.0),
-        ], p=1.)
-
+    def get_transformations(self, train=True):
+        if train:
+            return Compose([
+                #Lambda(image=repeat_ch, name='repeat'),
+                Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                # Transpose(p=0.5),
+                HorizontalFlip(p=0.5),
+                VerticalFlip(p=0.5),
+                # ShiftScaleRotate(p=0.5),
+                # Perspective(p=0.5),
+                # ElasticTransform(p=0.5),
+                # GridDistortion(p=0.5),
+                # CLAHE(p=0.5),
+                # Cutout(p=0.25),
+                # MotionBlur(p=0.25),
+                # ImageCompression(p=0.5, quality_lower=50, quality_upper=100),
+                # Affine(scale=[0.5, 1.5], p=0.5),
+                Sharpen(p=0.25),
+                # HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
+                # RandomBrightnessContrast(brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5),
+                # CoarseDropout(p=0.5),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
+                ToTensorV2(p=1.0),
+            ], p=1.)
+        else: 
+            return Compose([
+                Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                ToTensorV2(p=1.0),
+            ], p=1.)
 
 class BasicDataset(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None):
@@ -189,12 +193,13 @@ class BasicStratifiedDataset(Dataset):
 
 class BasicStratifiedDatasetAlbumentation(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None,
-                    stratify_each_epoch=False
+                    stratify_each_epoch=False, test=False
                 ):
         self.images_folder = images_folder
         self.transform = transform
         self.mode = mode
         self.stratify_each_epoch = stratify_each_epoch
+        self.test = test
 
         with open(compare_file, "r") as file:
             lines = file.read().splitlines()
@@ -238,7 +243,11 @@ class BasicStratifiedDatasetAlbumentation(Dataset):
         image_2 = self.pairs[ix][1]
         person_1 = image_1.split("_")[0]
         person_2 = image_2.split("_")[0]
-
+        
+        if self.test:
+            image_1_name = image_1
+            image_2_name = image_2
+            
         true_label = 0 if person_1 == person_2 else 1
         
         image_1 = read(
@@ -254,7 +263,11 @@ class BasicStratifiedDatasetAlbumentation(Dataset):
         if self.transform:
             image_1 = self.transform(image=image_1)['image']
             image_2 = self.transform(image=image_2)['image']
-        return image_1, image_2, np.array([true_label])
+
+        if self.test:
+            return image_1, image_2, np.array([true_label]), image_1_name, image_2_name
+        else:
+            return image_1, image_2, np.array([true_label])
 
     def __len__(self):
         return len(self.similar_pairs) * 2

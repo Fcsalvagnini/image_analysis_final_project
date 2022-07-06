@@ -1,19 +1,21 @@
-from utils import export_learning_curves, config_flatten
+import os
 from torch_snippets import DataLoader, optim
 import torch
-from data_loaders import BasicDataset, BasicStratifiedDataset, \
-    BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
-    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations
-
-from save_best_model import SaveBestModel
-from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
-from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet, SiameseNetworkTimmBackbone
 from constants import *
 from tqdm import trange
 import gc
 import yaml
 import wandb
 import argparse
+
+from utils import export_learning_curves, config_flatten
+from data_loaders import BasicDataset, BasicStratifiedDataset, \
+    BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
+    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations
+from inference import inference
+from save_best_model import SaveBestModel
+from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
+from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet, SiameseNetworkTimmBackbone
 
 save_best_model = SaveBestModel()
 
@@ -51,14 +53,14 @@ FACTORY_DICT = {
 }
 
 
-def get_dataset(dataset_configs, configs):
+def get_dataset(dataset_configs, configs, train=True):
     transform_type = list(dataset_configs.values())[0]["transform"]
     if transform_type:
         transformations_configs = configs["transformation"]
         transfomations_obj = FACTORY_DICT["transformation"][transform_type](
             **transformations_configs[transform_type]
         )
-        list(dataset_configs.values())[0]["transform"] = transfomations_obj.get_transformations()
+        list(dataset_configs.values())[0]["transform"] = transfomations_obj.get_transformations(train)
 
     dataset = FACTORY_DICT["dataset"][list(dataset_configs.keys())[0]](
         **dataset_configs[list(dataset_configs.keys())[0]]
@@ -70,18 +72,24 @@ def get_dataset(dataset_configs, configs):
 def experiment_factory(configs):
     train_dataset_configs = configs["train_dataset"]
     validation_dataset_configs = configs["validation_dataset"]
+    test_dataset_configs = configs["test_dataset"]
     model_configs = configs["model"]
     optimizer_configs = configs["optimizer"]
     criterion_configs = configs["loss"]
 
     # Construct the dataloaders with any given transformations (if any)
     train_dataset = get_dataset(train_dataset_configs, configs)
-    validation_dataset = get_dataset(validation_dataset_configs, configs)
+    validation_dataset = get_dataset(validation_dataset_configs, configs, train=False)
+    test_dataset = get_dataset(test_dataset_configs, configs, train=False)
+
     train_loader = DataLoader(
         train_dataset, batch_size=configs["batch_size"], shuffle=False
     )
     validation_loader = DataLoader(
         validation_dataset, batch_size=configs["batch_size"], shuffle=False
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=configs["test"]["batch_size"], shuffle=False
     )
 
     # Build model
@@ -99,7 +107,7 @@ def experiment_factory(configs):
         **criterion_configs[list(criterion_configs.keys())[0]]
     )
 
-    return model, train_loader, validation_loader, optimizer, criterion
+    return model, train_loader, validation_loader, test_loader, optimizer, criterion
 
 
 def parse_yaml_file(yaml_path):
@@ -171,7 +179,8 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
                         epoch,
                         model,
                         optimizer,
-                        criterion)
+                        criterion,
+                        configurations)
 
     epoch_loss = (running_loss / len(loader)).detach().numpy()
     epoch_acc = (running_accuracy / len(loader)).detach().numpy()
@@ -204,7 +213,9 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
                        'valid_acc': valid_acc, 'valid_loss': valid_loss})
 
     export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
-    torch.save(model, configs["path_to_save_model"])
+    savingName = f'{configs["network"]}_epoch_{epoch}.pth'
+    savingPath = os.path.join(configs["path_to_save_model"], savingName)
+    torch.save(model, savingPath)
 
 
 if __name__ == "__main__":
@@ -216,7 +227,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     configurations = parse_yaml_file(args.config_file)
 
-    model, train_loader, validation_loader, optimizer, criterion = experiment_factory(configurations)
+    model, train_loader, validation_loader, test_loader, \
+        optimizer, criterion = experiment_factory(configurations)
 
     # summary(model)
     fconfigurations = {}
@@ -231,3 +243,7 @@ if __name__ == "__main__":
         model, train_loader, validation_loader, optimizer,
         criterion, configurations
     )
+
+    inference(model, test_loader, criterion, configurations)
+
+    torch.cuda.empty_cache()
