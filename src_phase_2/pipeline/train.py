@@ -227,7 +227,8 @@ if __name__ == '__main__':
 
         model = SiameseNetworkTimmBackbone(config['network'],
                                            config['training']['image_size'],
-                                           config['training']['nchannels'])
+                                           config['training']['nchannels'],
+                                           transformers=False)
         model.to(device)
 
         scaler = GradScaler()

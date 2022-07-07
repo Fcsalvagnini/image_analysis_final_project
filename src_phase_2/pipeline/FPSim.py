@@ -13,11 +13,18 @@ def get_n_out_features(encoder, img_size, nchannels):
 
 
 class SiameseNetworkTimmBackbone(nn.Module):
-    def __init__(self, model_name:str, img_size:int, nchannels: int):
+    def __init__(self, model_name:str, img_size:int, nchannels: int, transformers: bool=False):
         super().__init__()
-        self.encoder = timm.create_model(model_name=model_name, 
-                                         pretrained=True,
-                                         features_only=True)
+        if transformers:
+            model_creator = {'model_name': model_name, 
+                             "pretrained":True,
+                             "num_classes": 0}
+        else:
+            model_creator = {'model_name': model_name, 
+                             "pretrained":True,
+                             "features_only": True}
+
+        self.encoder = timm.create_model(**model_creator)
         for param in self.encoder.parameters():
             param.requires_grad = False
         n_out = get_n_out_features(self.encoder, img_size, nchannels)
