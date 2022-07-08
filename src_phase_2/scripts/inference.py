@@ -2,9 +2,10 @@ import argparse
 import yaml
 
 import numpy as np
-from sklearn.metrics import euclidean_distances
 import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.metrics import cohen_kappa_score, confusion_matrix, precision_score,\
+     recall_score, f1_score, plot_confusion_matrix
 
 import torch
 import torch.nn as nn
@@ -31,7 +32,8 @@ FACTORY_DICT = {
         "BasicDatasetTriplet": BasicDatasetTriplet,
         "DatasetRawTraining": DatasetRawTraining,
         "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
-        "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation
+        "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
+        "BasicDatasetAlbumentation": BasicDatasetAlbumentation
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,
@@ -97,15 +99,41 @@ def load_model_weights(model, model_weights):
     return model
 
 
-def get_euclidean_distance(features_1, features_2, labels, same, different):
+def get_predict_result(euclidean_distance,constrastive_threshold):
+    if euclidean_distance <= constrastive_threshold:
+        return 0
+    else:
+        return 1
+
+def get_euclidean_distance(
+    features_1, features_2, labels, same, different, constrastive_threshold, true_class, pred_class):
     with torch.no_grad():
-        euclidean_distance = F.pairwise_distance(features_1, features_2)
-        #print(euclidean_distance.shape)
+        _euclidean_distance = F.pairwise_distance(features_1, features_2)
+        euclidean_distance = _euclidean_distance.cpu().numpy()[0]
+        pred = get_predict_result(euclidean_distance, constrastive_threshold)
+        true_class.append(labels.cpu().numpy()[0][0])        
+        #print(euclidean_distance, type(euclidean_distance), labels.cpu().numpy()[0], type(labels.cpu().numpy()[0]))
+        pred_class.append(pred)
         if (labels == 0):
-            same.append(euclidean_distance.item())
+            same.append(euclidean_distance)
         else:
-            different.append(euclidean_distance.item())
-    return same, different
+            different.append(euclidean_distance)
+    return same, different, true_class, pred_class
+
+
+def plot_confusionmatrix(cfm, configs):
+    axis_labels=['True', 'False']
+
+    _, ax = plt.subplots(figsize=(5,5))
+    hmap = sns.heatmap(cfm, annot=True, cbar=False, cmap='Blues', fmt="d", ax=ax)
+    
+    hmap.set_xlabel('Valores Preditos')
+    hmap.set_ylabel('Valores Reais')
+    hmap.xaxis.set_ticklabels(axis_labels)
+    hmap.yaxis.set_ticklabels(axis_labels)
+
+    plt.savefig(f'confusion_matrix_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
+    plt.show()
 
 
 def plot_histogram(same, different, configs):
@@ -124,7 +152,7 @@ def plot_histogram(same, different, configs):
 
 def inference(model, test_loader, loss_fn, configs):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    constrastive_threshold = configs['loss']['ContrastiveLoss']['contrastive_threshold']
     model.eval()
     with torch.no_grad():
         accum_loss = 0
@@ -132,16 +160,19 @@ def inference(model, test_loader, loss_fn, configs):
         num_samples = 0
         accum_image_predictions =  []
         accum_target_predictions = []
-        same, different = [], []
+        same, different, true_class, pred_class = [], [], [], []
         progress_bar = tqdm(enumerate(test_loader), total=len(test_loader))
         for itr, batch in progress_bar:
             image_1, image_2, labels = [data.to(device) for data in batch[:3]]
             image_1_name, image_2_name = batch[3:]
 
-            
             features_1, features_2 = model(image_1, image_2)
-            same, different = get_euclidean_distance(
-                features_1, features_2, labels, same, different)
+            
+            same, different, true_class, pred_class = get_euclidean_distance(
+                features_1, features_2, labels, \
+                    same, different, constrastive_threshold, \
+                        true_class, pred_class)
+                
             loss, accuracy = loss_fn(features_1, features_2, labels)
 
             accum_loss += loss.cpu() * configs['test']['batch_size']
@@ -153,9 +184,33 @@ def inference(model, test_loader, loss_fn, configs):
                 progress_bar.set_description(description)
     
     plot_histogram(same, different, configs)
-    print(f'[Same] Mean: {np.mean(same):.2f}, std: {np.std(same)}')
-    print(f'[Different] {np.mean(different):.2f}, std: {np.std(different)}')
+    print(f'[Same] Mean: {np.mean(same):.2f}, std: {np.std(same):.2f}')
+    print(f'[Different] {np.mean(different):.2f}, std: {np.std(different):.2f}')
 
+    test_acc = accum_acc / num_samples
+    test_loss = accum_loss / num_samples
+    cfm = confusion_matrix(true_class, pred_class)
+    recall = recall_score(true_class, pred_class)
+    precision = precision_score(true_class, pred_class)
+    f1score = f1_score(true_class, pred_class)
+    kappa = cohen_kappa_score(true_class, pred_class)
+
+    print(f'Recall: {recall:.2f}')
+    print(f'Precision: {precision:.2f}')
+    print(f'F1-Score: {f1score:.2f}')
+    print(f'Kappa: {kappa:.2f}')
+    plot_confusionmatrix(cfm, configs)
+
+    test_metrics = {
+        "test_acc": test_acc,
+        "test_loss": test_loss,
+        "cfm": cfm,
+        "recall": recall,
+        "precision": precision,
+        "f1score": f1score,
+        "kappa": kappa}
+
+    return test_metrics
 
 """
 individuo_nada_posDedo_

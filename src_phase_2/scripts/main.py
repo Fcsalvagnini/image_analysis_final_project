@@ -248,6 +248,9 @@ if __name__ == "__main__":
         criterion, configurations
     )
 
-    inference(model, test_loader, criterion, configurations)
-
+    test_metrics = inference(model, test_loader, criterion, configurations)
+    
+    if configurations['wandb']:
+        wandb.log(test_metrics)
+    
     torch.cuda.empty_cache()
