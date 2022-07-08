@@ -1,15 +1,16 @@
 epochs: 10
-batch_size: 64
+batch_size: 128
 path_to_save_model: "../report/models/"
 path_to_save_report: "../report/dataset_v1/"
-wandb: True
+wandb: False
 network: "efficientnet_b4"
 
 model:
   SiameseNetworkTimmBackbone:
-    network: "efficientnet_b4"
+    network: "xcit_small_24_p8_224"
     image_size: 200
     nchannels: 3
+    transformers: True
 
 train_dataset:
   BasicStratifiedDatasetAlbumentation:

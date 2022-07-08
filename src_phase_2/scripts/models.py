@@ -155,17 +155,26 @@ class SiameseNetworkTimmBackbone(nn.Module):
                              "features_only": True}
 
         self.encoder = timm.create_model(**model_creator)
-        
+        self.dimensionality_reductor = None
+
         for param in self.encoder.parameters():
             param.requires_grad = False
         n_out = get_n_out_features(self.encoder, image_size, nchannels)
+        
+        if transformers:
+            self.dimensionality_reductor = nn.Sequential(
+                nn.Linear(n_out, 512), nn.ReLU(inplace = True),
+                nn.Linear(512, 256), nn.ReLU(inplace=True),
+                nn.Linear(256, 64)
+            )
+        else:
+            self.dimensionality_reductor = nn.Sequential(
+                        nn.Flatten(),
+                        nn.Linear(n_out, 512), nn.ReLU(inplace = True),
+                        nn.Linear(512, 256), nn.ReLU(inplace=True),
+                        nn.Linear(256, 64)
+            )
 
-        self.dimensionality_reductor = nn.Sequential(
-            nn.Flatten(),
-            nn.Linear(n_out, 512), nn.ReLU(inplace = True),
-            nn.Linear(512, 256), nn.ReLU(inplace=True),
-            nn.Linear(256, 64)
-        )
 
     def forward(self, input1, input2):
         output1 = self.encoder(input1)[-1]

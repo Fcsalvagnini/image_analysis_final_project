@@ -6,6 +6,8 @@ from skimage.morphology import skeletonize
 import numpy as np
 import random
 
+import pywt
+
 from albumentations import (
     HorizontalFlip, VerticalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90, Perspective,
     Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue, Affine,

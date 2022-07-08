@@ -105,6 +105,7 @@ def get_predict_result(euclidean_distance,constrastive_threshold):
     else:
         return 1
 
+
 def get_euclidean_distance(
     features_1, features_2, labels, same, different, constrastive_threshold, true_class, pred_class):
     with torch.no_grad():
