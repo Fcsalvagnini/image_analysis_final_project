@@ -1,9 +1,9 @@
-epochs: 1
+epochs: 100
 batch_size: 64
 path_to_save_model: "../report/models/"
 path_to_save_report: "../report/dataset_v1/"
 wandb: False
-network: "efficientnet_b0"
+network: "vgg19"
 
 model:
   SiameseNetworkTimmBackbone:
@@ -12,30 +12,30 @@ model:
     nchannels: 3
 
 train_dataset:
-  BasicStratifiedDatasetAlbumentation:
+  BasicDatasetAlbumentation:
     images_folder: "../data/registred_images_v2_train/"
     compare_file: "../compare_files/compare_splited_v2_train_new.txt"
     transform: Albumentation
     mode: 1 # 0: gray scale | 1: RGB
-    stratify_each_epoch: True
+    #stratify_each_epoch: True
     test: False
 
 validation_dataset:
-  BasicStratifiedDatasetAlbumentation:
+  BasicDatasetAlbumentation:
     images_folder: "../data/registred_images_v2_validation/"
     compare_file: "../compare_files/compare_splited_v2_validation_new.txt"
     transform: Albumentation
     mode: 1 # 0: gray scale | 1: RGB
-    stratify_each_epoch: True
+    #stratify_each_epoch: True
     test: False
 
 test_dataset:
-  BasicStratifiedDatasetAlbumentation:
+  BasicDatasetAlbumentation:
     images_folder: "../data/registred_images_v2_test/"
     compare_file: "../compare_files/compare_splited_v2_test_new.txt"
     transform: Albumentation
     mode: 1 # 0: gray scale | 1: RGB
-    stratify_each_epoch: True  
+    #stratify_each_epoch: True  
     test: True
 
 transformation:
@@ -48,7 +48,7 @@ transformation:
     image_size: 200
   
 test:
-  batch_size: 8
+  batch_size: 1
   verbose: 1
 
 optimizer:

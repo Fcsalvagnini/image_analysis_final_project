@@ -98,7 +98,7 @@ class BasicDataset(Dataset):
         person_1 = image_1.split("_")[0]
         person_2 = image_2.split("_")[0]
 
-        true_label = 1 if person_1 == person_2 else 0
+        true_label = 0 if person_1 == person_2 else 1
         image_1 = read(
             os.path.join(self.images_folder, image_1), mode=self.mode
         )
@@ -189,6 +189,59 @@ class BasicStratifiedDataset(Dataset):
 
     def __len__(self):
         return len(self.similar_pairs) * 2
+
+
+class BasicDatasetAlbumentation(Dataset):
+    def __init__(self, images_folder, compare_file, transform=None, mode=None,
+                    test=False
+                ):
+        self.images_folder = images_folder
+        self.transform = transform
+        self.mode = mode
+        self.test = test
+
+        with open(compare_file, "r") as file:
+            lines = file.read().splitlines()
+        self.pairs = list(
+            map(lambda line: line.split(" "), lines)
+        )
+
+        self.images_folder = images_folder
+
+    
+    def __getitem__(self, ix):
+        image_1 = self.pairs[ix][0]
+        image_2 = self.pairs[ix][1]
+        person_1 = image_1.split("_")[0]
+        person_2 = image_2.split("_")[0]
+        
+        if self.test:
+            image_1_name = image_1
+            image_2_name = image_2
+            
+        true_label = 0 if person_1 == person_2 else 1
+        
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+            image_2 = np.expand_dims(image_2, 2)
+        
+        if self.transform:
+            image_1 = self.transform(image=image_1)['image']
+            image_2 = self.transform(image=image_2)['image']
+
+        if self.test:
+            return image_1, image_2, np.array([true_label]), image_1_name, image_2_name
+        else:
+            return image_1, image_2, np.array([true_label])
+
+    def __len__(self):
+        return len(self.pairs)
 
 
 class BasicStratifiedDatasetAlbumentation(Dataset):

@@ -1,5 +1,6 @@
 import os
 from torch_snippets import DataLoader, optim
+from torch import optim
 import torch
 from constants import *
 from tqdm import trange
@@ -11,7 +12,8 @@ import argparse
 from utils import export_learning_curves, config_flatten
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
     BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
-    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations
+    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, \
+    BasicDatasetAlbumentation
 from inference import inference
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
@@ -35,7 +37,8 @@ FACTORY_DICT = {
         "BasicDatasetTriplet": BasicDatasetTriplet,
         "DatasetRawTraining": DatasetRawTraining,
         "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
-        "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation
+        "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
+        "BasicDatasetAlbumentation": BasicDatasetAlbumentation
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,
@@ -175,15 +178,16 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
                 )
 
         accuracy_valid = (running_accuracy / (batch_idx + 1))
-        save_best_model(accuracy_valid,
-                        epoch,
-                        model,
-                        optimizer,
-                        criterion,
-                        configurations)
 
     epoch_loss = (running_loss / len(loader)).detach().numpy()
     epoch_acc = (running_accuracy / len(loader)).detach().numpy()
+    save_best_model(epoch_acc,
+                    epoch,
+                    model,
+                    optimizer,
+                    criterion,
+                    configurations,
+                    metric='accuracy')
     monitoring_metrics["loss"]["validation"].append(epoch_loss)
     monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
 
