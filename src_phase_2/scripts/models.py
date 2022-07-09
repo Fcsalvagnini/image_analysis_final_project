@@ -4,7 +4,7 @@ from torch_snippets import nn
 from vit_transformer import PatchEmbedding, TransformerEncoder
 from torchvision import models
 from einops.layers.torch import Reduce
-
+import math
 
 class ViT(nn.Sequential):
     def __init__(self,
@@ -71,18 +71,103 @@ class ViTSiameseTriplet(nn.Module):
         return output_anchor, output_pos, output_neg
 
 
-def ConvBlock(channels_in, channels_out, kernel_size=3):
-    return nn.Sequential(
+def ConvBlock(
+        channels_in, channels_out, kernel_size=3, padding=False, use_bn=True,
+        activation_function=None, pool=False
+    ):
+    if padding:
+        padding = "same"
+    else:
+        padding = "valid"
+    bias = False if use_bn else True
+    op_list = [
         nn.Conv2d(channels_in, channels_out,
-                  kernel_size=kernel_size, padding=kernel_size // 2,
-                  bias=False
-                  ),
-        nn.BatchNorm2d(channels_out),
-        nn.ReLU(inplace=True),
-        nn.MaxPool2d(kernel_size=kernel_size, stride=2, padding=1
-                     )
-    )
+                  kernel_size=kernel_size, padding=padding,
+                  bias=bias
+                  )
+    ]
+    if use_bn:
+        op_list.append(nn.BatchNorm2d(channels_out))
+    if activation_function:
+        op_list.append(activation_function)
+    if pool:
+        op_list.append(
+            nn.MaxPool2d(kernel_size=kernel_size, stride=2, padding=1)
+        )
+    
+    return nn.Sequential(*op_list)
 
+
+# Implement Siamese based on the one proposed in the Constrastive Loss Paper
+
+# Network based on the "Siamese Network Based on CNN for Fingerprint Recognition" paper
+class ConvFingerprintSiamese(nn.Module):
+    def __init__(self, input_size, activation=False):
+        super(ConvFingerprintSiamese, self).__init__()
+        self.input_size = input_size
+        if activation:
+            activation = nn.ReLU(inplace=True)
+        else:
+            activation = None
+
+        features_layers_extractors = [
+            nn.ReflectionPad2d(1),
+            ConvBlock(
+                channels_in=1, channels_out=4, padding=False,
+                activation_function=activation
+            ),
+            nn.ReflectionPad2d(1),
+            ConvBlock(
+                channels_in=4, channels_out=8, padding=False,
+                activation_function=activation
+            ),
+            nn.ReflectionPad2d(1),
+            ConvBlock(
+                channels_in=8, channels_out=8, padding=False,
+                activation_function=activation
+            ),
+            nn.Flatten(),
+        ]
+
+        linear_layers = [
+            nn.Linear(input_size[0] * input_size[1] * 8, 500),
+            nn.Linear(500,500),
+            nn.Linear(500,5)
+        ]
+
+        for idx in range(len(linear_layers)):
+            features_layers_extractors.append(linear_layers[idx])
+            if activation and idx != len(linear_layers) - 1:
+                features_layers_extractors.append(activation)
+
+        self.features = nn.Sequential(*features_layers_extractors)
+
+    def forward(self, input_1, input_2):
+        output_1 = self.features(input_1)
+        output_2 = self.features(input_2)
+
+        return output_1, output_2
+
+    def _initialize_weights(self):
+        #for each submodule of our network
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                #get the number of elements in the layer weights
+                n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels    
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = sqrt(2. / n))
+                m.weight.data.normal_(mean=0, std=math.sqrt(2. / n))
+
+                if m.bias is not None:
+                    #initialize bias with 0 
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = 1/100
+                m.weight.data.normal_(mean=0, std=0.01)
+                if m.bias is not None:
+                #initialize bias with 0 
+                    m.bias.data.zero_()
 
 class SimpleConvSiameseNN(nn.Module):
     def __init__(self, input_size):
@@ -90,9 +175,18 @@ class SimpleConvSiameseNN(nn.Module):
         self.input_size = input_size
 
         self.features = nn.Sequential(
-            ConvBlock(channels_in=1, channels_out=32),
-            ConvBlock(channels_in=32, channels_out=128),
-            ConvBlock(channels_in=128, channels_out=128),
+            ConvBlock(
+                channels_in=1, channels_out=128, padding=True, 
+                activation_function=nn.ReLU(inplace=True), pool=True
+            ),
+            ConvBlock(
+                channels_in=128, channels_out=64, padding=True, 
+                activation_function=nn.ReLU(inplace=True), pool=True
+            ),
+            ConvBlock(
+                channels_in=64, channels_out=32, padding=True, 
+                activation_function=nn.ReLU(inplace=True), pool=True
+            ),
             nn.Flatten(),
             nn.Linear(128 * (self.input_size[0] // 8) * (self.input_size[1] // 8), 512),
             nn.ReLU(inplace=True),

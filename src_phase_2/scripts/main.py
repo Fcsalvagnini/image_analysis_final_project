@@ -8,6 +8,8 @@ import gc
 import yaml
 import wandb
 import argparse
+from torchsummary import summary
+import os
 
 from utils import export_learning_curves, config_flatten
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
@@ -16,7 +18,9 @@ from data_loaders import BasicDataset, BasicStratifiedDataset, \
 from inference import inference
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
-from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, ViTSiameseTriplet, SiameseNetworkTimmBackbone
+from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, \
+                    ViTSiameseTriplet, SiameseNetworkTimmBackbone, \
+                    ConvFingerprintSiamese
 
 save_best_model = SaveBestModel()
 
@@ -25,6 +29,7 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 FACTORY_DICT = {
     "model": {
         "SimpleConvSiameseNN": SimpleConvSiameseNN,
+        "ConvFingerprintSiamese": ConvFingerprintSiamese,
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
         "ViTSiamese": ViTSiamese,
         "ViTSiameseTriplet": ViTSiameseTriplet,
@@ -177,19 +182,18 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
                     desc=f"[Epoch {epoch}] Loss: {running_loss / (batch_idx + 1):.3f} - Acc {running_accuracy / (batch_idx + 1):.3f}"
                 )
 
-        accuracy_valid = (running_accuracy / (batch_idx + 1))
-
     epoch_loss = (running_loss / len(loader)).detach().numpy()
     epoch_acc = (running_accuracy / len(loader)).detach().numpy()
-    save_best_model(epoch_acc,
-                    epoch,
-                    model,
-                    optimizer,
-                    criterion,
-                    configurations,
-                    metric='accuracy')
+
     monitoring_metrics["loss"]["validation"].append(epoch_loss)
     monitoring_metrics["accuracy"]["validation"].append(epoch_acc)
+    save_best_model(epoch_loss,
+                epoch,
+                model,
+                optimizer,
+                criterion,
+                configurations,
+                metric='loss')
 
     return epoch_loss, epoch_acc
 
@@ -197,6 +201,7 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
 def run_training_experiment(model, train_loader, validation_loader, optimizer,
                             criterion, configs
                             ):
+    os.makedirs(configs["path_to_save_model"], exist_ok=True)
     monitoring_metrics = {
         "loss": {"train": [], "validation": []},
         "accuracy": {"train": [], "validation": []}
@@ -216,11 +221,10 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
             wandb.log({'train_acc': train_acc, 'train_loss': train_loss,
                        'valid_acc': valid_acc, 'valid_loss': valid_loss})
 
-    export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
     savingName = f'{configs["network"]}_epoch_{epoch}.pth'
     savingPath = os.path.join(configs["path_to_save_model"], savingName)
     torch.save(model, savingPath)
-
+    export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
 
 if __name__ == "__main__":
     # Reads YAML that sets configurations for training experiment
@@ -234,7 +238,7 @@ if __name__ == "__main__":
     model, train_loader, validation_loader, test_loader, \
         optimizer, criterion = experiment_factory(configurations)
 
-    # summary(model)
+    summary(model)
     fconfigurations = {}
     fconfigurations = config_flatten(configurations, fconfigurations)
     if configurations['wandb']:

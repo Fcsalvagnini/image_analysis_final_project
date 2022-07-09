@@ -165,7 +165,6 @@ def inference(model, test_loader, loss_fn, configs):
         progress_bar = tqdm(enumerate(test_loader), total=len(test_loader))
         for itr, batch in progress_bar:
             image_1, image_2, labels = [data.to(device) for data in batch[:3]]
-            image_1_name, image_2_name = batch[3:]
 
             features_1, features_2 = model(image_1, image_2)
             

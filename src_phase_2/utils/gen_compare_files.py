@@ -73,7 +73,7 @@ def write_comparisons(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Registry Configuration Generator")
     parser.add_argument(
-        '--input_folder', type=str, help='Path to save the compare.txt file',
+        '--input_folder', type=str, help='Path to dataset images',
         default='../data/images_02/'
     )
     parser.add_argument(

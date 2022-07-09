@@ -221,7 +221,7 @@ class BasicStratifiedDataset(Dataset):
         person_1 = image_1.split("_")[0]
         person_2 = image_2.split("_")[0]
 
-        true_label = 1 if person_1 == person_2 else 0
+        true_label = 0 if person_1 == person_2 else 1
         image_1 = read(
             os.path.join(self.images_folder, image_1), mode=self.mode
         )
