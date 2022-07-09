@@ -63,7 +63,7 @@ def get_dataset(dataset_configs, configs, train=True):
         transfomations_obj = FACTORY_DICT["transformation"][transform_type](
             **transformations_configs[transform_type]
         )
-        list(dataset_configs.values())[0]["transform"] = transfomations_obj.get_transformations(train, custom=True)
+        list(dataset_configs.values())[0]["transform"] = transfomations_obj.get_transformations(train)
 
     dataset = FACTORY_DICT["dataset"][list(dataset_configs.keys())[0]](
         **dataset_configs[list(dataset_configs.keys())[0]]

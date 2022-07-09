@@ -191,10 +191,10 @@ def inference(model, test_loader, loss_fn, configs):
     test_acc = accum_acc / num_samples
     test_loss = accum_loss / num_samples
     cfm = confusion_matrix(true_class, pred_class)
-    recall = recall_score(true_class, pred_class)
-    precision = precision_score(true_class, pred_class)
-    f1score = f1_score(true_class, pred_class)
-    kappa = cohen_kappa_score(true_class, pred_class)
+    #recall = recall_score(true_class, pred_class)
+    #precision = precision_score(true_class, pred_class)
+    #f1score = f1_score(true_class, pred_class)
+    #kappa = cohen_kappa_score(true_class, pred_class)
 
     #print(f'Recall: {recall:.2f}')
     #print(f'Precision: {precision:.2f}')

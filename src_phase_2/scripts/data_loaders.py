@@ -79,7 +79,7 @@ class AlbumentationTransformations:
                 # HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
                 # RandomBrightnessContrast(brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5),
                 # CoarseDropout(p=0.5),
-                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
                 #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
@@ -87,7 +87,7 @@ class AlbumentationTransformations:
             return Compose([
                 Lambda(image=custom_transformation,  name='custom-transform', p=1.),
                 Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
-                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
                 #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
