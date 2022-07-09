@@ -6,7 +6,7 @@ from skimage.morphology import skeletonize
 import numpy as np
 import random
 
-import pywt
+import images_preprocessing as imp
 
 from albumentations import (
     HorizontalFlip, VerticalFlip, IAAPerspective, ShiftScaleRotate, CLAHE, RandomRotate90, Perspective,
@@ -46,17 +46,26 @@ class BasicTransformations:
 
 
 class AlbumentationTransformations:
-    def __init__(self, image_size=200):
+    def __init__(self, image_size=200, custom_transform=False):
         self.image_size = image_size
+        self.custom_transform = custom_transform
+
 
     def get_transformations(self, train=True):
+        def custom_transformation(image, **kwargs):
+            if (self.custom_transform):
+                return imp.process_transform(image, transform=self.custom_transform)
+            else:
+                return image
+
         if train:
             return Compose([
                 #Lambda(image=repeat_ch, name='repeat'),
+                Lambda(image=custom_transformation,  name='custom-transform', p=1.),
                 Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
                 # Transpose(p=0.5),
-                HorizontalFlip(p=0.5),
-                VerticalFlip(p=0.5),
+                # HorizontalFlip(p=0.5),
+                # VerticalFlip(p=0.5),
                 # ShiftScaleRotate(p=0.5),
                 # Perspective(p=0.5),
                 # ElasticTransform(p=0.5),
@@ -66,19 +75,20 @@ class AlbumentationTransformations:
                 # MotionBlur(p=0.25),
                 # ImageCompression(p=0.5, quality_lower=50, quality_upper=100),
                 # Affine(scale=[0.5, 1.5], p=0.5),
-                Sharpen(p=0.25),
+                # Sharpen(p=0.25),
                 # HueSaturationValue(hue_shift_limit=0.2, sat_shift_limit=0.2, val_shift_limit=0.2, p=0.5),
                 # RandomBrightnessContrast(brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5),
                 # CoarseDropout(p=0.5),
-                #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
-                Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
         else: 
             return Compose([
+                Lambda(image=custom_transformation,  name='custom-transform', p=1.),
                 Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
-                #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
-                Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
+                #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
 
@@ -315,11 +325,9 @@ class BasicStratifiedDatasetAlbumentation(Dataset):
         if not self.mode:
             image_1 = np.expand_dims(image_1, 2)
             image_2 = np.expand_dims(image_2, 2)
-        
         if self.transform:
             image_1 = self.transform(image=image_1)['image']
             image_2 = self.transform(image=image_2)['image']
-
         if self.test:
             return image_1, image_2, np.array([true_label]), image_1_name, image_2_name
         else:

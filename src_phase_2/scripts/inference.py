@@ -5,7 +5,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.metrics import cohen_kappa_score, confusion_matrix, precision_score,\
-     recall_score, f1_score, plot_confusion_matrix
+     recall_score, f1_score, classification_report
 
 import torch
 import torch.nn as nn
@@ -196,20 +196,26 @@ def inference(model, test_loader, loss_fn, configs):
     f1score = f1_score(true_class, pred_class)
     kappa = cohen_kappa_score(true_class, pred_class)
 
-    print(f'Recall: {recall:.2f}')
-    print(f'Precision: {precision:.2f}')
-    print(f'F1-Score: {f1score:.2f}')
-    print(f'Kappa: {kappa:.2f}')
+    #print(f'Recall: {recall:.2f}')
+    #print(f'Precision: {precision:.2f}')
+    #print(f'F1-Score: {f1score:.2f}')
+    #print(f'Kappa: {kappa:.2f}')
+    print(classification_report(true_class, pred_class, target_names=['Same', 'Different']))
+    report = classification_report(true_class, pred_class, target_names=['Same', 'Different'], output_dict=True)
+    
     plot_confusionmatrix(cfm, configs)
 
     test_metrics = {
         "test_acc": test_acc,
         "test_loss": test_loss,
-        "cfm": cfm,
-        "recall": recall,
-        "precision": precision,
-        "f1score": f1score,
-        "kappa": kappa}
+        "same_recall": report['Same']['recall'],
+        "same_precision": report['Same']['precision'],
+        "same_f1score": report['Same']['f1-score'],
+        "different_recall": report['Different']['recall'],
+        "different_precision": report['Different']['precision'],
+        "different_f1score": report['Different']['f1-score'],
+        #"kappa": kappa
+        }
 
     return test_metrics
 
