@@ -11,9 +11,8 @@ import argparse
 
 from utils import export_learning_curves, config_flatten
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
-    BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations, \
-    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, \
-    BasicDatasetAlbumentation
+    BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations,BasicDatasetAlbumentation, \
+    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, BasicDatasetCsv
 from inference import inference
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
@@ -37,8 +36,9 @@ FACTORY_DICT = {
         "BasicDatasetTriplet": BasicDatasetTriplet,
         "DatasetRawTraining": DatasetRawTraining,
         "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
+        "BasicDatasetAlbumentation": BasicDatasetAlbumentation,
         "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
-        "BasicDatasetAlbumentation": BasicDatasetAlbumentation
+        "BasicDatasetCsv": BasicDatasetCsv
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,
@@ -249,8 +249,8 @@ if __name__ == "__main__":
     )
 
     test_metrics = inference(model, test_loader, criterion, configurations)
-    
+
     if configurations['wandb']:
         wandb.log(test_metrics)
-    
+
     torch.cuda.empty_cache()

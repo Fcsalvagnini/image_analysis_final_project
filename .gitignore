@@ -24,3 +24,5 @@ src_phase_2/wandb/
 src_phase_2/models/
 *.pth
 .idea/
+
+src_phase_1/libmo445/

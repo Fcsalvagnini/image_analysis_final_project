@@ -9,8 +9,8 @@ model:
     in_channels: 1
     patch_size: 16
     emb_size: 768
-    img_size: 180
-    depth: 5
+    img_size: 200
+    depth: 6
 
 
 train_dataset:
@@ -29,10 +29,10 @@ validation_dataset:
 
 transformation:
   BasicTransformations:
-    image_size: !!python/list [180, 180]
-    #affine_degrees: 5
-    #affine_translate: !!python/tuple [0.01, 0.02]
-    #affine_scale: !!python/tuple [0.9, 1.1]
+    image_size: !!python/list [200, 200]
+    affine_degrees: 5
+    affine_translate: !!python/tuple [0.01, 0.02]
+    affine_scale: !!python/tuple [0.9, 1.1]
 
 optimizer:
   Adam:

@@ -1,5 +1,6 @@
 import os
 import matplotlib.pyplot as plt
+from itertools import combinations
 import numpy as np
 import random
 
@@ -107,6 +108,57 @@ def create_triplets_dir(compare_dir, id_image=8):
     return triplets
 
 
+def create_pairs_balanced_2(compare_dir, id_image=8):
+    list_label_images = []
+
+    list_images = os.listdir(compare_dir)
+
+    list_images.sort()
+
+    label = 0
+
+    len_dataset = len(list_images)
+
+    for i in range(len(list_images) // 3):
+        similars = list_images[i * 3:i * 3 + 3]
+
+        temp = list(combinations(similars, 2))
+
+        for j in range(len(temp)):
+            pair = list(temp[j])
+            pair += [label]
+            list_label_images.append(tuple(pair))
+
+        for j in range(len(temp)):
+            pair = list(temp[j])
+            pair.reverse()
+            pair += [label]
+            list_label_images.append(tuple(pair))
+
+    length_dissimilar = len(list_label_images)
+
+    label = 1
+
+    count = 0
+
+    while count < length_dissimilar:
+
+        random.seed(None)
+
+        idx_pos_dissimilar_1 = 0
+        idx_pos_dissimilar_2 = 0
+
+        while list_images[idx_pos_dissimilar_1][:id_image] == list_images[idx_pos_dissimilar_2][:id_image]:
+            idx_pos_dissimilar_1 = random.randint(0, len_dataset - 1)
+            idx_pos_dissimilar_2 = random.randint(0, len_dataset - 1)
+
+        list_label_images.append((list_images[idx_pos_dissimilar_1], list_images[idx_pos_dissimilar_2], label))
+
+        count += 1
+
+    return sorted(list_label_images, key=lambda x: x[1])
+
+
 def create_pairs_balanced(compare_dir, id_image=8):
     list_label_images = []
 
@@ -118,7 +170,7 @@ def create_pairs_balanced(compare_dir, id_image=8):
 
     for id_balanced in range(len_dataset_train):
         if id_balanced % 2 == 0:
-            label = 1
+            label = 0
 
             while list_images[id_balanced][:id_image] != list_images[idx_pos][:id_image]:
                 idx_pos = random.randint(0, len_dataset_train - 1)
@@ -126,7 +178,7 @@ def create_pairs_balanced(compare_dir, id_image=8):
             list_label_images.append((list_images[id_balanced], list_images[idx_pos], label))
         else:
 
-            label = 0
+            label = 1
 
             while list_images[id_balanced][:id_image] == list_images[idx_pos][:id_image]:
                 idx_pos = random.randint(0, len_dataset_train - 1)
@@ -136,8 +188,35 @@ def create_pairs_balanced(compare_dir, id_image=8):
     return list_label_images
 
 
+def create_csv(path,path_image, name):
+    pairs = create_pairs_balanced_2(f"{path}{path_image}")
+
+    import pandas as pd
+
+    dict_save_pd = {'image_1': [],
+                    'image_2': [],
+                    'label': []}
+
+    for elem in pairs:
+        dict_save_pd['image_1'].append(elem[0])
+        dict_save_pd['image_2'].append(elem[1])
+        dict_save_pd['label'].append(elem[2])
+
+    pd.DataFrame(dict_save_pd).to_csv(f"{path}{name}", index=False)
+
+    return True
+
+
 if __name__ == '__main__':
-    triplas = create_triplets_dir("../compare_files/compare_splited_v1_train_new.txt")
-    for i in range(5, 20):
-        print(triplas[i])
+    PATH = "/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/"
+    create_csv(PATH, 'validation', 'validation.csv')
+
+    PATH = "/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/"
+    create_csv(PATH, 'train', 'train.csv')
+
+    PATH = "/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/image_02_crop/"
+    create_csv(PATH, 'test', 'test.csv')
+
+    # for i in range(len(triplas)):
+    #     print(triplas[i])
     # create_triplet("../compare_files/compare_splited_v1_test_new.txt")

@@ -90,11 +90,11 @@ class SimpleConvSiameseNN(nn.Module):
         self.input_size = input_size
 
         self.features = nn.Sequential(
-            ConvBlock(channels_in=1, channels_out=128),
-            ConvBlock(channels_in=128, channels_out=64),
-            ConvBlock(channels_in=64, channels_out=32),
+            ConvBlock(channels_in=1, channels_out=32),
+            ConvBlock(channels_in=32, channels_out=128),
+            ConvBlock(channels_in=128, channels_out=128),
             nn.Flatten(),
-            nn.Linear(32 * (self.input_size[0] // 8) * (self.input_size[1] // 8), 512),
+            nn.Linear(128 * (self.input_size[0] // 8) * (self.input_size[1] // 8), 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 256),
             nn.ReLU(inplace=True),
@@ -146,21 +146,22 @@ class SiameseNetworkTimmBackbone(nn.Module):
     def __init__(self, network:str, image_size:int, nchannels: int, transformers: bool=False):
         super().__init__()
         if transformers:
-            model_creator = {'model_name': network, 
+            model_creator = {'model_name': network,
                              "pretrained":True,
                              "num_classes": 0}
         else:
-            model_creator = {'model_name': network, 
+            model_creator = {'model_name': network,
                              "pretrained":True,
                              "features_only": True}
 
         self.encoder = timm.create_model(**model_creator)
+
         self.dimensionality_reductor = None
 
         for param in self.encoder.parameters():
             param.requires_grad = False
         n_out = get_n_out_features(self.encoder, image_size, nchannels)
-        
+
         if transformers:
             self.dimensionality_reductor = nn.Sequential(
                 nn.Linear(n_out, 512), nn.ReLU(inplace = True),
