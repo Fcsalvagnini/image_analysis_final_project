@@ -169,6 +169,7 @@ class ConvFingerprintSiamese(nn.Module):
                 #initialize bias with 0 
                     m.bias.data.zero_()
 
+
 class SimpleConvSiameseNN(nn.Module):
     def __init__(self, input_size):
         super(SimpleConvSiameseNN, self).__init__()
@@ -229,12 +230,14 @@ class PreTrainedVGGSiameseNN(nn.Module):
 
         return output_1, output_2
 
+
 def get_n_out_features(encoder, img_size, nchannels):
     out_feature = encoder(torch.randn(1, nchannels, img_size, img_size))
     n_out = 1
     for dim in out_feature[-1].shape:
         n_out *= dim
     return n_out
+
 
 class SiameseNetworkTimmBackbone(nn.Module):
     def __init__(self, network:str, image_size:int, nchannels: int, transformers: bool=False):
@@ -259,15 +262,15 @@ class SiameseNetworkTimmBackbone(nn.Module):
         if transformers:
             self.dimensionality_reductor = nn.Sequential(
                 nn.Linear(n_out, 512), nn.ReLU(inplace = True),
-                nn.Linear(512, 256), nn.ReLU(inplace=True),
-                nn.Linear(256, 64)
+                #nn.Linear(512, 256), nn.ReLU(inplace=True),
+                nn.Linear(512, 10)
             )
         else:
             self.dimensionality_reductor = nn.Sequential(
                         nn.Flatten(),
                         nn.Linear(n_out, 512), nn.ReLU(inplace = True),
-                        nn.Linear(512, 256), nn.ReLU(inplace=True),
-                        nn.Linear(256, 64)
+                        #nn.Linear(512, 256), nn.ReLU(inplace=True),
+                        nn.Linear(512, 10)
             )
 
 

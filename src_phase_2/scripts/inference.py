@@ -21,6 +21,7 @@ from losses import *
 FACTORY_DICT = {
     "model": {
         "SimpleConvSiameseNN": SimpleConvSiameseNN,
+        "ConvFingerprintSiamese": ConvFingerprintSiamese,
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
         "ViTSiamese": ViTSiamese,
         "ViTSiameseTriplet": ViTSiameseTriplet,
@@ -32,8 +33,11 @@ FACTORY_DICT = {
         "BasicDatasetTriplet": BasicDatasetTriplet,
         "DatasetRawTraining": DatasetRawTraining,
         "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
+        "BasicDatasetAlbumentation": BasicDatasetAlbumentation,
         "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
-        "BasicDatasetAlbumentation": BasicDatasetAlbumentation
+        "BasicDatasetCsv": BasicDatasetCsv,
+        "BalancedCroppedDataset": BalancedCroppedDataset,
+        "BalancedCroppedDatasetAlbumentation": BalancedCroppedDatasetAlbumentation
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,

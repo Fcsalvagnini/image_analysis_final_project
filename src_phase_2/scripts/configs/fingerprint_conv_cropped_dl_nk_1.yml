@@ -3,43 +3,52 @@ batch_size: 64
 path_to_save_model: "../models/fingerprint_conv_cropped_dl_1/"
 path_to_save_report: "../report/fingerprint_conv_cropped_dl_1/"
 wandb: False
-network: fingerprint_conv_cropped_dl_1
+network: efficientnet_b0
 
 test:
   batch_size: 1
   verbose: 1
 
 model:
-  ConvFingerprintSiamese:
-    input_size: !!python/list [200, 200]
-    activation: True
+  #ConvFingerprintSiamese:
+  #  input_size: !!python/list [200, 200]
+  #  activation: True
+  SiameseNetworkTimmBackbone:
+    network:  efficientnet_b0 #"xcit_small_24_p8_224"
+    image_size: 200
+    nchannels: 3
+    transformers: False
+
 
 train_dataset:
-  BalancedCroppedDatasetAlbumentation:
-    images_folder: "../data/images_02_cropped_enh_v2/"
-    transform: Albumentation
-    mode: 0 # 0: gray scale | 1: RGB
+  BalancedCroppedDataset:
+    images_folder: "../data/images_02_cropped/"
+    transform: BasicTransformations
+    mode: 1 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/train.txt"
     repeat: 4
 
 validation_dataset:
-  BalancedCroppedDatasetAlbumentation:
-    images_folder: "../data/images_02_cropped_enh_v2/"
-    transform: Albumentation
-    mode: 0 # 0: gray scale | 1: RGB
+  BalancedCroppedDataset:
+    images_folder: "../data/images_02_cropped/"
+    transform: BasicTransformations
+    mode: 1 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/validation.txt"
     repeat: 4
 
 test_dataset:
-  BasicDataset:
-    images_folder: "../data/images_02_cropped_enh_v2/"
-    compare_file: "../compare_files/compare_splited_v3_test_new.txt"
-    transform: Albumentation
-    mode: 0 # 0: gray scale | 1: RGB
+  BalancedCroppedDataset:
+    images_folder: "../data/images_02_cropped/"
+    transform: BasicTransformations
+    mode: 1 # 0: gray scale | 1: RGB
+    subset_images: "../compare_files/test.txt"
+
+    repeat: 1
+
 
 transformation:
   BasicTransformations:
-    image_size: !!python/list [140, 140]
+    image_size: !!python/list [200, 200]
     affine_degrees: 5
     affine_translate: !!python/tuple [0.01, 0.02]
     affine_scale: !!python/tuple [0.9, 1.1]

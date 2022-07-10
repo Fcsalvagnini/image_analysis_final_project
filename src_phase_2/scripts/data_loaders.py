@@ -14,9 +14,11 @@ from albumentations import (
     Transpose, ShiftScaleRotate, Blur, OpticalDistortion, GridDistortion, HueSaturationValue, Affine,
     IAAAdditiveGaussianNoise, GaussNoise, MotionBlur, MedianBlur, PiecewiseAffine, RandomResizedCrop,
     Sharpen, IAAEmboss, RandomBrightnessContrast, Flip, OneOf, Compose, Normalize, Cutout, CoarseDropout,
-    ShiftScaleRotate, CenterCrop, Resize, Lambda, ElasticTransform, ImageCompression, ToFloat
+    ShiftScaleRotate, CenterCrop, Resize, Lambda, ElasticTransform, ImageCompression, ToFloat, 
 )
 from albumentations.pytorch import ToTensorV2
+from albumentations.augmentations.crops.transforms import CenterCrop
+from albumentations.augmentations.geometric.rotate import Rotate
 
 from utils import create_triplet, create_pairs_balanced, create_triplets_dir
 
@@ -69,7 +71,9 @@ class AlbumentationTransformations:
             return Compose([
                 #Lambda(image=repeat_ch, name='repeat'),
                 Lambda(image=custom_transformation,  name='custom-transform', p=1.),
-                Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                #Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                Rotate(limit=90, interpolation=cv2.INTER_LINEAR, p=0.5),
+                CenterCrop(self.image_size, self.image_size, p=1.0),
                 # Transpose(p=0.5),
                 # HorizontalFlip(p=0.5),
                 # VerticalFlip(p=0.5),
@@ -78,9 +82,9 @@ class AlbumentationTransformations:
                 # ElasticTransform(p=0.5),
                 # GridDistortion(p=0.5),
                 # CLAHE(p=0.5),
-                Cutout(p=0.25),
-                GaussNoise(p=0.5),
-                MedianBlur(p=0.5),
+                # Cutout(p=0.25),
+                # GaussNoise(p=0.5),
+                # MedianBlur(p=0.5),
                 # MotionBlur(p=0.25),
                 # ImageCompression(p=0.5, quality_lower=50, quality_upper=100),
                 # Affine(scale=[0.5, 1.5], p=0.5),
@@ -95,7 +99,8 @@ class AlbumentationTransformations:
         else:
             return Compose([
                 Lambda(image=custom_transformation,  name='custom-transform', p=1.),
-                Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                #Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
+                CenterCrop(self.image_size, self.image_size, p=1.0),
                 #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
                 Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),

@@ -34,7 +34,7 @@ test_dataset:
   BasicDataset:
     images_folder: "../data/cropped_images_v3_test/"
     compare_file: "../compare_files/compare_splited_v3_test_new.txt"
-    transform: BasicTransformations
+    transform: Albumentation
     mode: 0 # 0: gray scale | 1: RGB
 
 transformation:

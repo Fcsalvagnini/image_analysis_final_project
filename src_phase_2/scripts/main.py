@@ -226,7 +226,7 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
 
     savingName = f'{configs["network"]}_epoch_{epoch}.pth'
     savingPath = os.path.join(configs["path_to_save_model"], savingName)
-    torch.save(model, savingPath)
+    torch.save(model.state_dict(), savingPath)
     export_learning_curves(monitoring_metrics, output_folder=configs["path_to_save_report"])
 
 if __name__ == "__main__":
