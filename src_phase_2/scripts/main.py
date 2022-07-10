@@ -15,7 +15,7 @@ from utils import export_learning_curves, config_flatten
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
     BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations,BasicDatasetAlbumentation, \
     DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, BasicDatasetCsv, \
-    BalancedCroppedDataset
+    BalancedCroppedDataset, BalancedCroppedDatasetAlbumentation
 from inference import inference
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
@@ -45,7 +45,8 @@ FACTORY_DICT = {
         "BasicDatasetAlbumentation": BasicDatasetAlbumentation,
         "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
         "BasicDatasetCsv": BasicDatasetCsv,
-        "BalancedCroppedDataset": BalancedCroppedDataset
+        "BalancedCroppedDataset": BalancedCroppedDataset,
+        "BalancedCroppedDatasetAlbumentation": BalancedCroppedDatasetAlbumentation
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,
@@ -240,7 +241,7 @@ if __name__ == "__main__":
     model, train_loader, validation_loader, test_loader, \
         optimizer, criterion = experiment_factory(configurations)
 
-    summary(model)
+    #summary(model)
     fconfigurations = {}
     fconfigurations = config_flatten(configurations, fconfigurations)
     if configurations['wandb']:

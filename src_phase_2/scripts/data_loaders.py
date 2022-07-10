@@ -78,7 +78,9 @@ class AlbumentationTransformations:
                 # ElasticTransform(p=0.5),
                 # GridDistortion(p=0.5),
                 # CLAHE(p=0.5),
-                # Cutout(p=0.25),
+                Cutout(p=0.25),
+                GaussNoise(p=0.5),
+                MedianBlur(p=0.5),
                 # MotionBlur(p=0.25),
                 # ImageCompression(p=0.5, quality_lower=50, quality_upper=100),
                 # Affine(scale=[0.5, 1.5], p=0.5),
@@ -87,7 +89,7 @@ class AlbumentationTransformations:
                 # RandomBrightnessContrast(brightness_limit=(-0.1, 0.1), contrast_limit=(-0.1, 0.1), p=0.5),
                 # CoarseDropout(p=0.5),
                 #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
-                #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
+                Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
         else:
@@ -95,7 +97,7 @@ class AlbumentationTransformations:
                 Lambda(image=custom_transformation,  name='custom-transform', p=1.),
                 Resize(self.image_size, self.image_size, interpolation=cv2.INTER_CUBIC, p=1.),
                 #Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225], max_pixel_value=255.0, p=1.0),
-                #Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
+                Normalize(mean=[0.5], std=[0.5], max_pixel_value=255.0, p=1.0),
                 ToTensorV2(p=1.0),
             ], p=1.)
 
@@ -253,6 +255,86 @@ class BalancedCroppedDataset(Dataset):
 
     def __len__(self):
         return len(self.cropped_images) * 4 * self.repeat
+
+
+class BalancedCroppedDatasetAlbumentation(Dataset):
+    def __init__(self, images_folder, transform, mode, subset_images, repeat=1):
+        self.images_folder = images_folder
+        self.transform = transform
+        self.mode = mode
+        self.repeat = repeat
+        
+        with open(subset_images, "r") as file:
+            self.cropped_images = file.read().splitlines()
+
+
+    def get_image_pairs(self):
+        pairs = []
+        subject_ids = [image.split("_")[0] for image in self.cropped_images] 
+        subject_ids = np.unique(subject_ids)
+
+        for subject_id in subject_ids:
+            subject_images = [
+                img for img in self.cropped_images \
+                if subject_id in img
+            ]
+            other_subject_images = [
+                img for img in self.cropped_images \
+                if subject_id not in img
+            ]
+            
+            for subject_image_1 in subject_images:
+                # Adds similar pairs
+                for subject_image_2 in subject_images:
+                    if subject_image_1 == subject_image_2:
+                        continue
+                    pairs.append([
+                        subject_image_1, subject_image_2
+                    ])
+                # Adds dissimilar pairs
+                for other_subject_image in random.sample(other_subject_images, 2):
+                    # In case of randomly selecting the same image
+                    while other_subject_image == pairs[-1][1]:
+                        other_subject_image = random.sample(other_subject_images, 1)
+                    pairs.append([
+                        subject_image_1, other_subject_image
+                    ])
+
+        np.random.shuffle(pairs)
+
+        return pairs
+
+    def __getitem__(self, ix):
+        if ix == 0:
+            self.pairs = []
+            for _ in range(self.repeat):
+                self.pairs += self.get_image_pairs()
+
+        image_1 = self.pairs[ix][0]
+        image_2 = self.pairs[ix][1]
+        person_1 = image_1.split("_")[0]
+        person_2 = image_2.split("_")[0]
+
+        true_label = 0 if person_1 == person_2 else 1
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+            image_2 = np.expand_dims(image_2, 2)
+
+        if self.transform:
+            image_1 = self.transform(image=image_1)['image']
+            image_2 = self.transform(image=image_2)['image']
+
+        return image_1, image_2, np.array([true_label])
+
+    def __len__(self):
+        return len(self.cropped_images) * 4 * self.repeat
+
 
 class BasicStratifiedDataset(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None,
