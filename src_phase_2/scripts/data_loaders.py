@@ -56,7 +56,7 @@ class AlbumentationTransformations:
     def __init__(self, image_size=200, custom_transform=False):
         self.image_size = image_size
         self.custom_transform = custom_transform
-
+        self.enhancement = None
 
     def get_transformations(self, train=True):
         def custom_transformation(image, **kwargs):

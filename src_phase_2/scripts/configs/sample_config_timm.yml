@@ -6,11 +6,14 @@ wandb: True
 network: "efficientnet_b0"
 
 model:
-  SiameseNetworkTimmBackbone:
-    network:  efficientnet_b1 #"xcit_small_24_p8_224"
-    image_size: 200
-    nchannels: 3
-    transformers: False
+  #SiameseNetworkTimmBackbone:
+  #  network:  efficientnet_b1 #"xcit_small_24_p8_224"
+  #  image_size: 200
+  #  nchannels: 3
+  #  transformers: False
+  SimpleConvSiameseNN:
+    input_size: !!python/tuple [200, 200]
+
 
 train_dataset:
   BasicStratifiedDatasetAlbumentation:
@@ -47,7 +50,7 @@ transformation:
     affine_scale: !!python/tuple [0.9, 1.1]
   Albumentation:
     image_size: 200
-    custom_transform: wavelets # only for BasicStratifiedDatasetAlbumentation
+    custom_transform: enhancement # only for BasicStratifiedDatasetAlbumentation
 
 test:
   batch_size: 1

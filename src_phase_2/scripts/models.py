@@ -253,7 +253,7 @@ class SiameseNetworkTimmBackbone(nn.Module):
         self.dimensionality_reductor = None
 
         for param in self.encoder.parameters():
-            param.requires_grad = False
+            param.requires_grad = True
         n_out = get_n_out_features(self.encoder, image_size, nchannels)
 
         if transformers:

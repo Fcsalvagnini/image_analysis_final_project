@@ -1,5 +1,5 @@
 epochs: 200
-batch_size: 64
+batch_size: 2
 path_to_save_model: "/mnt/arquivos_linux/1_semestre/Falcao/image_analysis_final_project/src_phase_2/models/vit_model_siamese.pth"
 path_to_save_report: "../report/dataset_v1/"
 wandb: False
