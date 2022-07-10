@@ -14,7 +14,8 @@ import os
 from utils import export_learning_curves, config_flatten
 from data_loaders import BasicDataset, BasicStratifiedDataset, \
     BasicDatasetTriplet, BasicDatasetTripletRaw, BasicTransformations,BasicDatasetAlbumentation, \
-    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, BasicDatasetCsv
+    DatasetRawTraining, BasicStratifiedDatasetAlbumentation, AlbumentationTransformations, BasicDatasetCsv, \
+    BalancedCroppedDataset
 from inference import inference
 from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
@@ -43,7 +44,8 @@ FACTORY_DICT = {
         "BasicDatasetTripletRaw": BasicDatasetTripletRaw,
         "BasicDatasetAlbumentation": BasicDatasetAlbumentation,
         "BasicStratifiedDatasetAlbumentation": BasicStratifiedDatasetAlbumentation,
-        "BasicDatasetCsv": BasicDatasetCsv
+        "BasicDatasetCsv": BasicDatasetCsv,
+        "BalancedCroppedDataset": BalancedCroppedDataset
     },
     "transformation": {
         "BasicTransformations": BasicTransformations,
@@ -206,8 +208,8 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
         "loss": {"train": [], "validation": []},
         "accuracy": {"train": [], "validation": []}
     }
-    if configs['wandb']:
-        wandb.watch(model, criterion, log="all", log_freq=1)
+    # if configs['wandb']:
+    #     wandb.watch(model, criterion, log="all", log_freq=1)
     for epoch in range(1, configs["epochs"] + 1):
         train_loss, train_acc = run_train_epoch(
             model, optimizer, criterion, train_loader, monitoring_metrics,

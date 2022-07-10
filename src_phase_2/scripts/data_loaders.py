@@ -25,17 +25,23 @@ class BasicTransformations:
     """Rotate by one of the given angles."""
 
     def __init__(self, image_size=[300, 300], affine_degrees=5,
-                 affine_translate=(0.01, 0.02), affine_scale=(0.9, 1.1)
+                 affine_translate=(0.01, 0.02), affine_scale=(0.9, 1.1),
+                 rotate_degrees=45, center_crop=0
                  ):
-        self.image_size = image_size
-        self.affine_degrees = affine_degrees
-        self.affine_translate = affine_translate
-        self.affine_scale = affine_scale
+        self.image_size = image_size # increase to 150
+        self.affine_degrees = affine_degrees # increase
+        self.affine_translate = affine_translate # increase
+        self.affine_scale = affine_scale # increase
+        self.rotate_degrees = rotate_degrees
+        self.center_crop = center_crop # CenterCrop(285)
+        # Binarize image
+
 
     def get_transformations(self, train=True):
         transformations_composition = transforms.Compose([
             transforms.ToPILImage(),
             transforms.RandomHorizontalFlip(),
+            transforms.RandomRotation(self.rotate_degrees),
             transforms.RandomAffine(self.affine_degrees, self.affine_translate,
                                     scale=self.affine_scale),
             transforms.Resize(self.image_size),
@@ -169,6 +175,84 @@ class BasicDatasetCsv(Dataset):
     def __len__(self):
         return len(self.images_1)
 
+
+class BalancedCroppedDataset(Dataset):
+    def __init__(self, images_folder, transform, mode, subset_images, repeat=1):
+        self.images_folder = images_folder
+        self.transform = transform
+        self.mode = mode
+        self.repeat = repeat
+        
+        with open(subset_images, "r") as file:
+            self.cropped_images = file.read().splitlines()
+
+
+    def get_image_pairs(self):
+        pairs = []
+        subject_ids = [image.split("_")[0] for image in self.cropped_images] 
+        subject_ids = np.unique(subject_ids)
+
+        for subject_id in subject_ids:
+            subject_images = [
+                img for img in self.cropped_images \
+                if subject_id in img
+            ]
+            other_subject_images = [
+                img for img in self.cropped_images \
+                if subject_id not in img
+            ]
+            
+            for subject_image_1 in subject_images:
+                # Adds similar pairs
+                for subject_image_2 in subject_images:
+                    if subject_image_1 == subject_image_2:
+                        continue
+                    pairs.append([
+                        subject_image_1, subject_image_2
+                    ])
+                # Adds dissimilar pairs
+                for other_subject_image in random.sample(other_subject_images, 2):
+                    # In case of randomly selecting the same image
+                    while other_subject_image == pairs[-1][1]:
+                        other_subject_image = random.sample(other_subject_images, 1)
+                    pairs.append([
+                        subject_image_1, other_subject_image
+                    ])
+
+        np.random.shuffle(pairs)
+
+        return pairs
+
+    def __getitem__(self, ix):
+        if ix == 0:
+            self.pairs = []
+            for _ in range(self.repeat):
+                self.pairs += self.get_image_pairs()
+
+        image_1 = self.pairs[ix][0]
+        image_2 = self.pairs[ix][1]
+        person_1 = image_1.split("_")[0]
+        person_2 = image_2.split("_")[0]
+
+        true_label = 0 if person_1 == person_2 else 1
+        image_1 = read(
+            os.path.join(self.images_folder, image_1), mode=self.mode
+        )
+        image_2 = read(
+            os.path.join(self.images_folder, image_2), mode=self.mode
+        )
+        if not self.mode:
+            image_1 = np.expand_dims(image_1, 2)
+            image_2 = np.expand_dims(image_2, 2)
+
+        if self.transform:
+            image_1 = self.transform(image_1)
+            image_2 = self.transform(image_2)
+
+        return image_1, image_2, np.array([true_label])
+
+    def __len__(self):
+        return len(self.cropped_images) * 4 * self.repeat
 
 class BasicStratifiedDataset(Dataset):
     def __init__(self, images_folder, compare_file, transform=None, mode=None,

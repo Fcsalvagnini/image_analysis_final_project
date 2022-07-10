@@ -133,7 +133,7 @@ def plot_confusionmatrix(cfm, configs):
     hmap.xaxis.set_ticklabels(axis_labels)
     hmap.yaxis.set_ticklabels(axis_labels)
 
-    plt.savefig(f'confusion_matrix_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
+    plt.savefig(f'../report/{configs["path_to_save_report"]}/confusion_matrix_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
     plt.show()
 
 
@@ -148,7 +148,7 @@ def plot_histogram(same, different, configs):
     ax.legend()
     ax.grid(True)
     #plt.plot()
-    plt.savefig(f'euclidean_distance_histogram_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
+    plt.savefig(f'../report/{configs["path_to_save_report"]}/euclidean_distance_histogram_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
 
 
 def inference(model, test_loader, loss_fn, configs):

@@ -72,7 +72,7 @@ class ViTSiameseTriplet(nn.Module):
 
 
 def ConvBlock(
-        channels_in, channels_out, kernel_size=3, padding=False, use_bn=True,
+        channels_in, channels_out, kernel_size=5, padding=False, use_bn=True,
         activation_function=None, pool=False
     ):
     if padding:
@@ -111,17 +111,17 @@ class ConvFingerprintSiamese(nn.Module):
             activation = None
 
         features_layers_extractors = [
-            nn.ReflectionPad2d(1),
+            nn.ReflectionPad2d(2),
             ConvBlock(
                 channels_in=1, channels_out=4, padding=False,
                 activation_function=activation
             ),
-            nn.ReflectionPad2d(1),
+            nn.ReflectionPad2d(2),
             ConvBlock(
                 channels_in=4, channels_out=8, padding=False,
                 activation_function=activation
             ),
-            nn.ReflectionPad2d(1),
+            nn.ReflectionPad2d(2),
             ConvBlock(
                 channels_in=8, channels_out=8, padding=False,
                 activation_function=activation
