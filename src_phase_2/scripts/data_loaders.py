@@ -268,10 +268,10 @@ class BalancedCroppedDataset(Dataset):
 
         if self.binarize:
             image_1 = cv2.adaptiveThreshold(
-                image_1, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 
+                image_1, 255, cv2.ADAPTIVE_THRESH_MEAN_C
                 27, 13)
             image_2 = cv2.adaptiveThreshold(
-                image_2, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 
+                image_2, 255, cv2.ADAPTIVE_THRESH_MEAN_C
                 27, 13)
 
         if self.invert:
