@@ -436,7 +436,9 @@ class SimpleConvSiameseNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(512, 256),
             nn.ReLU(inplace=True),
-            nn.Linear(256, 64)
+            nn.Linear(256, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(256, 5)
         )
 
     def forward(self, input_1, input_2):
@@ -463,6 +465,8 @@ class PreTrainedVGGSiameseNN(nn.Module):
             nn.Linear(512, 256),
             nn.ReLU(inplace=True),
             nn.Linear(256, 64),
+            nn.ReLU(inplace=True),
+            nn.Linear(64, 5),
         )
 
     def forward(self, input_1, input_2):
