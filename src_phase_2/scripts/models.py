@@ -262,15 +262,15 @@ class SiameseNetworkTimmBackbone(nn.Module):
         if transformers:
             self.dimensionality_reductor = nn.Sequential(
                 nn.Linear(n_out, 512), nn.ReLU(inplace = True),
-                #nn.Linear(512, 256), nn.ReLU(inplace=True),
-                nn.Linear(512, 10)
+                nn.Linear(512, 256), nn.ReLU(inplace=True),
+                nn.Linear(256, 25)
             )
         else:
             self.dimensionality_reductor = nn.Sequential(
                         nn.Flatten(),
                         nn.Linear(n_out, 512), nn.ReLU(inplace = True),
-                        #nn.Linear(512, 256), nn.ReLU(inplace=True),
-                        nn.Linear(512, 10)
+                        nn.Linear(512, 256), nn.ReLU(inplace=True),
+                        nn.Linear(256, 25)
             )
 
 
