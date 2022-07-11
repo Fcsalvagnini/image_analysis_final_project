@@ -17,45 +17,44 @@ model:
 
 train_dataset:
   BalancedCroppedDataset:
-    images_folder: "../data/images_02_cropped/"
-    transform: null
-    mode: 0 # 0: gray scale | 1: RGB
+    images_folder: "../data/images_02_cropped_enh_v2/"
+    transform: BasicTransformations
+    mode: 1 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/train.txt"
     repeat: 4
 
 validation_dataset:
   BalancedCroppedDataset:
-    images_folder: "../data/images_02_cropped/"
+    images_folder: "../data/images_02_cropped_enh_v2/"
     transform: BasicTransformations
-    mode: 0 # 0: gray scale | 1: RGB
+    mode: 1 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/validation.txt"
     repeat: 4
 
 test_dataset:
   BasicDataset:
-    images_folder: "../data/cropped_images_v3_test/"
+    images_folder: "../data/images_02_cropped_enh_v2/"
     compare_file: "../compare_files/compare_splited_v3_test_new.txt"
     transform: BasicTransformations
-    mode: 0 # 0: gray scale | 1: RGB
+    mode: 1 # 0: gray scale | 1: RGB
 
 transformation:
   BasicTransformations:
-    image_size: !!python/list [140, 140]
-    affine_degrees: 20
-    affine_translate: !!python/tuple [0.1, 0.4]
-    affine_scale: !!python/tuple [0.6, 1.4]
+    image_size: !!python/list [200, 200]
+    affine_degrees: 5
+    affine_translate: !!python/tuple [0.01, 0.02]
+    affine_scale: !!python/tuple [0.9, 1.1]
     rotate_degrees: 45
-
-test:
-  batch_size: 1
-  verbose: 1
 
 optimizer:
   Adam:
     lr: 0.001
-    weight_decay: 0.01
+    weight_decay: 0
 
 loss:
   ContrastiveLoss:
-    margin: 2
+    margin: 2.0
     contrastive_threshold: 1.1
+
+test:
+  batch_size: 1
