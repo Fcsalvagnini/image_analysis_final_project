@@ -1,9 +1,9 @@
-epochs: 100
-batch_size: 64
-path_to_save_model: "../models/fingerprint_conv_cropped_dl_1/"
-path_to_save_report: "../report/fingerprint_conv_cropped_dl_1/"
-wandb: False
-network: fingerprint_conv_cropped_dl_1
+epochs: 50
+batch_size: 32
+path_to_save_model: "../models/fingerprint_conv_cropped_dl_bin_1/"
+path_to_save_report: "../report/fingerprint_conv_cropped_dl_bin_1/"
+wandb: True
+network: fingerprint_conv_cropped_dl_bin_1
 
 test:
   batch_size: 1
@@ -12,30 +12,39 @@ test:
 model:
   ConvFingerprintSiamese:
     input_size: !!python/list [140, 140]
+    kernel_size: 5
+    output_neurons: 5
     activation: True
 
 train_dataset:
   BalancedCroppedDataset:
-    images_folder: "../data/images_02_cropped_enh_v2/"
+    images_folder: "../data/images_02_cropped/"
     transform: BasicTransformations
     mode: 0 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/train.txt"
     repeat: 4
+    binarize: True
+    invert: True
 
 validation_dataset:
   BalancedCroppedDataset:
-    images_folder: "../data/images_02_cropped_enh_v2/"
+    images_folder: "../data/images_02_cropped/"
     transform: BasicTransformations
     mode: 0 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/validation.txt"
     repeat: 4
+    binarize: True
+    invert: True
 
 test_dataset:
-  BasicDataset:
-    images_folder: "../data/images_02_cropped_enh_v2/"
-    compare_file: "../compare_files/compare_splited_v3_test_new.txt"
+  BalancedCroppedDataset:
+    images_folder: "../data/images_02_cropped/"
     transform: BasicTransformations
     mode: 0 # 0: gray scale | 1: RGB
+    subset_images: "../compare_files/test.txt"
+    repeat: 1
+    binarize: True
+    invert: True
 
 transformation:
   BasicTransformations:
@@ -44,6 +53,9 @@ transformation:
     affine_translate: !!python/tuple [0.01, 0.02]
     affine_scale: !!python/tuple [0.9, 1.1]
     rotate_degrees: 45
+    gaussian_blur_kernel: !!python/tuple [3, 3]
+    random_erasing_p: 0.5
+    random_erasing_scale: !!python/tuple [0.02, 0.2]
 
 optimizer:
   Adam:

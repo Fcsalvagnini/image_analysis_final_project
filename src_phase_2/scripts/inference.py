@@ -26,7 +26,9 @@ FACTORY_DICT = {
         "ConvFingerprintSiamese": ConvFingerprintSiamese,
         "ViTSiamese": ViTSiamese,
         "ViTSiameseTriplet": ViTSiameseTriplet,
-        "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone
+        "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone,
+        "SCConvFingerprintSiameseV1": SCConvFingerprintSiameseV1,
+        "SCConvFingerprintSiameseV2": SCConvFingerprintSiameseV2
     },
     "dataset": {
         "BasicDataset": BasicDataset,

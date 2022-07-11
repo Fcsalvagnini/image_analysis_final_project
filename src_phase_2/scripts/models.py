@@ -1,6 +1,8 @@
 import torch
 import timm
 from torch_snippets import nn
+from torch import nn as tnn
+from torch.nn import functional as F
 from vit_transformer import PatchEmbedding, TransformerEncoder
 from torchvision import models
 from einops.layers.torch import Reduce
@@ -71,6 +73,249 @@ class ViTSiameseTriplet(nn.Module):
         return output_anchor, output_pos, output_neg
 
 
+class SCConvBlock(nn.Module):
+    def __init__(
+        self, channels_in, channels_out, kernel_size, 
+        pooling_ratio, normalization_layer
+    ):
+        super(SCConvBlock, self).__init__()
+        self.calibration_guide = nn.Sequential(
+            tnn.AvgPool2d(kernel_size=pooling_ratio, stride=pooling_ratio),
+            nn.Conv2d(channels_in, channels_out, kernel_size=kernel_size,
+                        stride=1, padding="same", bias=False
+                    ),
+            normalization_layer(channels_out)
+        )
+        self.calibrated_layer = nn.Sequential(
+            nn.Conv2d(channels_in, channels_out, kernel_size=kernel_size,
+                        stride=1, padding="same", bias=False
+                    ),
+            normalization_layer(channels_out)
+        )
+        self.calibration_layer = nn.Sequential(
+            nn.Conv2d(channels_in, channels_out, kernel_size=kernel_size,
+                        stride=1, padding="same", bias=False
+                    ),
+            normalization_layer(channels_out)
+        )
+
+    def forward(self, input):
+        identity = input
+
+        output = torch.sigmoid(
+            torch.add(
+                identity, F.interpolate(self.calibration_guide(input), identity.size()[2:])
+            )
+        )
+        output = torch.mul(self.calibrated_layer(input), output)
+        output = self.calibration_layer(output)
+
+        return output
+
+class SCConvBottleneck(nn.Module):
+    def __init__(self, sc_channels=10, kernel_size=5, pooling_ratio=2, 
+                normalization_layer=nn.BatchNorm2d
+    ):
+        super(SCConvBottleneck, self).__init__()
+        # Convolutions to split the input channels in two
+        self.conv1_a = nn.Conv2d(sc_channels, sc_channels // 2, 
+                                    kernel_size=1, bias=False
+                        )
+        self.bn1_a = normalization_layer(sc_channels // 2)
+        self.conv1_b = nn.Conv2d(sc_channels, sc_channels // 2, 
+                                    kernel_size=1, bias=False
+                        )
+        self.bn1_b = normalization_layer(sc_channels // 2)
+
+        self.sc_normal_convolution = nn.Sequential(
+            nn.Conv2d(
+                sc_channels // 2, sc_channels // 2, kernel_size=kernel_size,
+                stride=1, padding="same", bias=False,
+            ),
+            normalization_layer(sc_channels//2)
+        )
+        self.sc_conv = SCConvBlock(
+            sc_channels // 2, sc_channels // 2, kernel_size=kernel_size,
+            pooling_ratio=pooling_ratio, normalization_layer=normalization_layer
+        )
+
+        self.final_conv = nn.Conv2d(
+            sc_channels, sc_channels, kernel_size=1, bias=False
+        )
+        self.final_bn = normalization_layer(sc_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, input):
+        residual = input
+
+        output_a = self.conv1_a(input)
+        output_a = self.bn1_a(output_a)
+        output_b = self.conv1_b(input)
+        output_b = self.bn1_b(output_b)
+        output_a = self.relu(output_a)
+        output_b = self.relu(output_b)
+
+        output_a = self.sc_normal_convolution(output_a)
+        output_b = self.sc_conv(output_b)
+        output_a = self.relu(output_a)
+        output_b = self.relu(output_b)
+
+        output = self.final_conv(torch.cat([output_a, output_b], dim=1))
+        output = self.final_bn(output)
+
+        output += residual
+        output = self.relu(output)
+
+        return output
+
+class SCConvFingerprintSiameseV1(nn.Module):
+    def __init__(self, input_size, kernel_size=3, output_neurons=5, 
+                activation=False, pooling_ratio=2
+    ):
+        super(SCConvFingerprintSiameseV1, self).__init__()
+        self.input_size = input_size
+        if activation:
+            activation = nn.ReLU(inplace=True)
+        else:
+            activation = None
+        features_layers_extractors = [
+            nn.ReflectionPad2d(kernel_size//2),
+            ConvBlock(
+                channels_in=1, channels_out=4, padding=False, 
+                kernel_size=kernel_size, activation_function=activation
+            ),
+            nn.ReflectionPad2d(kernel_size//2),
+            ConvBlock(
+                channels_in=4, channels_out=8, padding=False,
+                kernel_size=kernel_size, activation_function=activation
+            ),
+            SCConvBottleneck(
+                sc_channels=8, kernel_size=kernel_size, 
+                pooling_ratio=pooling_ratio,
+                normalization_layer=nn.BatchNorm2d
+            ),
+            nn.Flatten(),
+        ]
+
+        linear_layers = [
+            nn.Linear(input_size[0] * input_size[1] * 8, 500),
+            nn.Linear(500,500),
+            nn.Linear(500,output_neurons)
+        ]
+
+        for idx in range(len(linear_layers)):
+            features_layers_extractors.append(linear_layers[idx])
+            if activation and idx != len(linear_layers) - 1:
+                features_layers_extractors.append(nn.ReLU(inplace=True))
+
+        self.features = nn.Sequential(*features_layers_extractors)
+
+    def forward(self, input_1, input_2):
+        output_1 = self.features(input_1)
+        output_2 = self.features(input_2)
+
+        return output_1, output_2
+
+    def _initialize_weights(self):
+        #for each submodule of our network
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                #get the number of elements in the layer weights
+                n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels    
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = sqrt(2. / n))
+                m.weight.data.normal_(mean=0, std=math.sqrt(2. / n))
+
+                if m.bias is not None:
+                    #initialize bias with 0 
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = 1/100
+                m.weight.data.normal_(mean=0, std=0.01)
+                if m.bias is not None:
+                #initialize bias with 0 
+                    m.bias.data.zero_()
+
+class SCConvFingerprintSiameseV2(nn.Module):
+    def __init__(self, input_size, kernel_size=3, output_neurons=5, 
+                activation=False, pooling_ratio=2
+        ):
+        super(SCConvFingerprintSiameseV2, self).__init__()
+        self.input_size = input_size
+        if activation:
+            activation = nn.ReLU(inplace=True)
+        else:
+            activation = None
+        features_layers_extractors = [
+            nn.ReflectionPad2d(kernel_size//2),
+            ConvBlock(
+                channels_in=1, channels_out=4, padding=False, 
+                kernel_size=kernel_size, activation_function=activation
+            ),
+            SCConvBottleneck(
+                sc_channels=4, kernel_size=kernel_size, 
+                pooling_ratio=pooling_ratio,
+                normalization_layer=nn.BatchNorm2d
+            ),
+            nn.ReflectionPad2d(kernel_size//2),
+            ConvBlock(
+                channels_in=4, channels_out=8, padding=False,
+                kernel_size=kernel_size, activation_function=activation
+            ),
+            SCConvBottleneck(
+                sc_channels=8, kernel_size=kernel_size,
+                pooling_ratio=pooling_ratio,
+                normalization_layer=nn.BatchNorm2d
+            ),
+            SCConvBottleneck(
+                sc_channels=8, kernel_size=kernel_size,
+                pooling_ratio=pooling_ratio,
+                normalization_layer=nn.BatchNorm2d
+            ),
+            nn.Flatten(),
+        ]
+
+        linear_layers = [
+            nn.Linear(input_size[0] * input_size[1] * 8, 500),
+            nn.Linear(500,500),
+            nn.Linear(500,output_neurons)
+        ]
+
+        for idx in range(len(linear_layers)):
+            features_layers_extractors.append(linear_layers[idx])
+            if activation and idx != len(linear_layers) - 1:
+                features_layers_extractors.append(nn.ReLU(inplace=True))
+
+        self.features = nn.Sequential(*features_layers_extractors)
+
+    def forward(self, input_1, input_2):
+        output_1 = self.features(input_1)
+        output_2 = self.features(input_2)
+
+        return output_1, output_2
+
+    def _initialize_weights(self):
+        #for each submodule of our network
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                #get the number of elements in the layer weights
+                n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels    
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = sqrt(2. / n))
+                m.weight.data.normal_(mean=0, std=math.sqrt(2. / n))
+
+                if m.bias is not None:
+                    #initialize bias with 0 
+                    m.bias.data.zero_()
+            elif isinstance(m, nn.Linear):
+                #initialize layer weights with random values generated from a normal
+                #distribution with mean = 0 and std = 1/100
+                m.weight.data.normal_(mean=0, std=0.01)
+                if m.bias is not None:
+                #initialize bias with 0 
+                    m.bias.data.zero_()
+
 def ConvBlock(
         channels_in, channels_out, kernel_size=5, padding=False, use_bn=True,
         activation_function=None, pool=False
@@ -96,18 +341,6 @@ def ConvBlock(
         )
     
     return nn.Sequential(*op_list)
-
-# class ScConvFingerprintSiamese(nn.Module):
-#     def __init__(self, input_size, kernel_size=3, output_neurons=5, activation=False):
-#         super(ConvFingerprintSiamese, self).__init__()
-#         self.input_size = input_size
-#         if activation:
-#             activation = nn.ReLU(inplace=True)
-#         else:
-#             activation = None
-
-#         self.get_self_calibrated_block()
-
 
 # Implement Siamese based on the one proposed in the Constrastive Loss Paper
 

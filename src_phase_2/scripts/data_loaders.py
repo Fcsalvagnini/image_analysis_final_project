@@ -46,6 +46,7 @@ class BasicTransformations:
             transformations_composition = transforms.Compose([
                 transforms.ToPILImage(),
                 transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
                 transforms.RandomRotation(self.rotate_degrees),
                 transforms.RandomAffine(self.affine_degrees, self.affine_translate,
                                         scale=self.affine_scale),

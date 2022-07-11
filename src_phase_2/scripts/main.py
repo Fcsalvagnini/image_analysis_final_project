@@ -21,7 +21,8 @@ from save_best_model import SaveBestModel
 from losses import ContrastiveLoss, TripletLoss, CosineLoss, ContrastiveCosineLoss
 from models import SimpleConvSiameseNN, PreTrainedVGGSiameseNN, ViTSiamese, \
                     ViTSiameseTriplet, SiameseNetworkTimmBackbone, \
-                    ConvFingerprintSiamese
+                    ConvFingerprintSiamese, SCConvFingerprintSiameseV1, \
+                    SCConvFingerprintSiameseV2
 
 save_best_model = SaveBestModel()
 
@@ -34,7 +35,9 @@ FACTORY_DICT = {
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
         "ViTSiamese": ViTSiamese,
         "ViTSiameseTriplet": ViTSiameseTriplet,
-        "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone
+        "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone,
+        "SCConvFingerprintSiameseV1": SCConvFingerprintSiameseV1,
+        "SCConvFingerprintSiameseV2": SCConvFingerprintSiameseV2
     },
     "dataset": {
         "BasicDataset": BasicDataset,
