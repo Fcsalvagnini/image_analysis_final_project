@@ -117,8 +117,12 @@ def experiment_factory(configs):
     criterion = FACTORY_DICT["loss"][list(criterion_configs.keys())[0]](
         **criterion_configs[list(criterion_configs.keys())[0]]
     )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, mode='min'
+    )
 
-    return model, train_loader, validation_loader, test_loader, optimizer, criterion
+    return model, train_loader, validation_loader, test_loader, optimizer, \
+            criterion, scheduler
 
 
 def parse_yaml_file(yaml_path):
@@ -202,7 +206,7 @@ def run_validation(model, optimizer, criterion, loader, monitoring_metrics,
 
 
 def run_training_experiment(model, train_loader, validation_loader, optimizer,
-                            criterion, configs
+                            criterion, scheduler, configs
                             ):
     os.makedirs(configs["path_to_save_model"], exist_ok=True)
     monitoring_metrics = {
@@ -220,6 +224,7 @@ def run_training_experiment(model, train_loader, validation_loader, optimizer,
             model, optimizer, criterion, validation_loader, monitoring_metrics,
             epoch, batch_size=configs["batch_size"]
         )
+        scheduler.step(monitoring_metrics["loss"]["validation"][-1])
         if configs['wandb']:
             wandb.log({'train_acc': train_acc, 'train_loss': train_loss,
                        'valid_acc': valid_acc, 'valid_loss': valid_loss})
@@ -239,7 +244,7 @@ if __name__ == "__main__":
     configurations = parse_yaml_file(args.config_file)
 
     model, train_loader, validation_loader, test_loader, \
-        optimizer, criterion = experiment_factory(configurations)
+        optimizer, criterion, scheduler = experiment_factory(configurations)
 
     #summary(model)
     fconfigurations = {}
@@ -252,7 +257,7 @@ if __name__ == "__main__":
 
     run_training_experiment(
         model, train_loader, validation_loader, optimizer,
-        criterion, configurations
+        criterion, scheduler, configurations
     )
 
     test_metrics = inference(model, test_loader, criterion, configurations)

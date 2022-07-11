@@ -97,34 +97,44 @@ def ConvBlock(
     
     return nn.Sequential(*op_list)
 
+# class ScConvFingerprintSiamese(nn.Module):
+#     def __init__(self, input_size, kernel_size=3, output_neurons=5, activation=False):
+#         super(ConvFingerprintSiamese, self).__init__()
+#         self.input_size = input_size
+#         if activation:
+#             activation = nn.ReLU(inplace=True)
+#         else:
+#             activation = None
+
+#         self.get_self_calibrated_block()
+
 
 # Implement Siamese based on the one proposed in the Constrastive Loss Paper
 
 # Network based on the "Siamese Network Based on CNN for Fingerprint Recognition" paper
 class ConvFingerprintSiamese(nn.Module):
-    def __init__(self, input_size, activation=False):
+    def __init__(self, input_size, kernel_size=3, output_neurons=5, activation=False):
         super(ConvFingerprintSiamese, self).__init__()
         self.input_size = input_size
         if activation:
             activation = nn.ReLU(inplace=True)
         else:
             activation = None
-
         features_layers_extractors = [
-            nn.ReflectionPad2d(2),
+            nn.ReflectionPad2d(kernel_size//2),
             ConvBlock(
-                channels_in=1, channels_out=4, padding=False,
-                activation_function=activation
+                channels_in=1, channels_out=4, padding=False, 
+                kernel_size=kernel_size, activation_function=activation
             ),
-            nn.ReflectionPad2d(2),
+            nn.ReflectionPad2d(kernel_size//2),
             ConvBlock(
                 channels_in=4, channels_out=8, padding=False,
-                activation_function=activation
+                kernel_size=kernel_size, activation_function=activation
             ),
-            nn.ReflectionPad2d(2),
+            nn.ReflectionPad2d(kernel_size//2),
             ConvBlock(
                 channels_in=8, channels_out=8, padding=False,
-                activation_function=activation
+                kernel_size=kernel_size, activation_function=activation
             ),
             nn.Flatten(),
         ]
@@ -132,13 +142,13 @@ class ConvFingerprintSiamese(nn.Module):
         linear_layers = [
             nn.Linear(input_size[0] * input_size[1] * 8, 500),
             nn.Linear(500,500),
-            nn.Linear(500,5)
+            nn.Linear(500,output_neurons)
         ]
 
         for idx in range(len(linear_layers)):
             features_layers_extractors.append(linear_layers[idx])
             if activation and idx != len(linear_layers) - 1:
-                features_layers_extractors.append(activation)
+                features_layers_extractors.append(nn.ReLU(inplace=True))
 
         self.features = nn.Sequential(*features_layers_extractors)
 

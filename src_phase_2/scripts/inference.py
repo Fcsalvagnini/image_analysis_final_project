@@ -23,6 +23,7 @@ FACTORY_DICT = {
         "SimpleConvSiameseNN": SimpleConvSiameseNN,
         "ConvFingerprintSiamese": ConvFingerprintSiamese,
         "PreTrainedVGGSiameseNN": PreTrainedVGGSiameseNN,
+        "ConvFingerprintSiamese": ConvFingerprintSiamese,
         "ViTSiamese": ViTSiamese,
         "ViTSiameseTriplet": ViTSiameseTriplet,
         "SiameseNetworkTimmBackbone": SiameseNetworkTimmBackbone

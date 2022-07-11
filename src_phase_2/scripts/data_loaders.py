@@ -28,28 +28,41 @@ class BasicTransformations:
 
     def __init__(self, image_size=[300, 300], affine_degrees=5,
                  affine_translate=(0.01, 0.02), affine_scale=(0.9, 1.1),
-                 rotate_degrees=45, center_crop=0
+                 rotate_degrees=45, gaussian_blur_kernel=[3, 3],
+                 random_erasing_p=0.5, random_erasing_scale=[0.02, 0.33]
                  ):
-        self.image_size = image_size # increase to 150
-        self.affine_degrees = affine_degrees # increase
-        self.affine_translate = affine_translate # increase
-        self.affine_scale = affine_scale # increase
+        self.image_size = image_size
+        self.affine_degrees = affine_degrees
+        self.affine_translate = affine_translate
+        self.affine_scale = affine_scale
         self.rotate_degrees = rotate_degrees
-        self.center_crop = center_crop # CenterCrop(285)
-        # Binarize image
+        self.gaussian_blur_kernel = gaussian_blur_kernel
+        self.random_erasing_p = random_erasing_p
+        self.random_erasing_scale = random_erasing_scale
 
 
     def get_transformations(self, train=True):
-        transformations_composition = transforms.Compose([
-            transforms.ToPILImage(),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomRotation(self.rotate_degrees),
-            transforms.RandomAffine(self.affine_degrees, self.affine_translate,
-                                    scale=self.affine_scale),
-            transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5), (0.5))
-        ])
+        if train:
+            transformations_composition = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomRotation(self.rotate_degrees),
+                transforms.RandomAffine(self.affine_degrees, self.affine_translate,
+                                        scale=self.affine_scale),
+                transforms.GaussianBlur(self.gaussian_blur_kernel),
+                transforms.Resize(self.image_size),
+                transforms.ToTensor(),
+                transforms.RandomErasing(p=self.random_erasing_p, 
+                        scale=self.random_erasing_scale),
+                transforms.Normalize((0.5), (0.5))
+            ])
+        else:
+            transformations_composition = transforms.Compose([
+                transforms.ToPILImage(),
+                transforms.Resize(self.image_size),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5), (0.5))
+            ])
 
         return transformations_composition
 
@@ -184,11 +197,15 @@ class BasicDatasetCsv(Dataset):
 
 
 class BalancedCroppedDataset(Dataset):
-    def __init__(self, images_folder, transform, mode, subset_images, repeat=1):
+    def __init__(self, images_folder, transform, mode, subset_images, 
+                repeat=1, binarize=False, invert=False
+            ):
         self.images_folder = images_folder
         self.transform = transform
         self.mode = mode
         self.repeat = repeat
+        self.binarize = binarize
+        self.invert = invert
         
         with open(subset_images, "r") as file:
             self.cropped_images = file.read().splitlines()
@@ -248,6 +265,19 @@ class BalancedCroppedDataset(Dataset):
         image_2 = read(
             os.path.join(self.images_folder, image_2), mode=self.mode
         )
+
+        if self.binarize:
+            image_1 = cv2.adaptiveThreshold(
+                image_1, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 
+                27, 13)
+            image_2 = cv2.adaptiveThreshold(
+                image_2, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 
+                27, 13)
+
+        if self.invert:
+            image_1 = 255 - image_1
+            image_2 = 255 - image_2
+
         if not self.mode:
             image_1 = np.expand_dims(image_1, 2)
             image_2 = np.expand_dims(image_2, 2)
