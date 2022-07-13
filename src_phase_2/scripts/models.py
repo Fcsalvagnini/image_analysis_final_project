@@ -342,7 +342,7 @@ def ConvBlock(
         op_list.append(activation_function)
     if pool:
         op_list.append(
-            nn.MaxPool2d(kernel_size=kernel_size, stride=2, padding=1)
+            nn.MaxPool2d(kernel_size=kernel_size, stride=2, padding=kernel_size//2)
         )
     
     return nn.Sequential(*op_list)
@@ -437,13 +437,13 @@ class SimpleConvSiameseNN(nn.Module):
                 activation_function=nn.ReLU(inplace=True), pool=True
             ),
             nn.Flatten(),
-            nn.Linear(128 * (self.input_size[0] // 8) * (self.input_size[1] // 8), 512),
+            nn.Linear(32 * (int(self.input_size[0] / 8 + 0.5)) * (int(self.input_size[1] / 8 + 0.5)), 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 256),
             nn.ReLU(inplace=True),
             nn.Linear(256, 64),
             nn.ReLU(inplace=True),
-            nn.Linear(256, 5)
+            nn.Linear(64, 5)
         )
 
     def forward(self, input_1, input_2):

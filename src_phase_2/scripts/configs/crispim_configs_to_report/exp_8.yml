@@ -1,17 +1,17 @@
-epochs: 200
+epochs: 50
 batch_size: 32
-path_to_save_model: "../models/SCConvFingerprintSiameseV1_300_pr2/"
-path_to_save_report: "../report/SCConvFingerprintSiameseV1_300_pr2/"
+path_to_save_model: "../models/SCConvFingerprintSiameseV2_140_pr2/"
+path_to_save_report: "../report/SCConvFingerprintSiameseV2_140_pr2/"
 wandb: True
-network: SCConvFingerprintSiameseV1_300_pr2
+network: SCConvFingerprintSiameseV2_140_pr2
 
 test:
   batch_size: 1
   verbose: 1
 
 model:
-  SCConvFingerprintSiameseV1:
-    input_size: !!python/list [300, 300]
+  SCConvFingerprintSiameseV2:
+    input_size: !!python/list [140, 140]
     kernel_size: 5
     output_neurons: 5
     activation: True
@@ -49,7 +49,7 @@ test_dataset:
 
 transformation:
   BasicTransformations:
-    image_size: !!python/list [300, 300]
+    image_size: !!python/list [140, 140]
     affine_degrees: 10
     affine_translate: !!python/tuple [0.01, 0.2]
     affine_scale: !!python/tuple [0.8, 1.2]

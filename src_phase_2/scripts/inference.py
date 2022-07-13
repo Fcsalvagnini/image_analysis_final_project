@@ -140,7 +140,7 @@ def plot_confusionmatrix(cfm, configs):
     hmap.xaxis.set_ticklabels(axis_labels)
     hmap.yaxis.set_ticklabels(axis_labels)
 
-    plt.savefig(f'../report/{configs["path_to_save_report"]}/confusion_matrix_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
+    plt.savefig(f'{configs["path_to_save_report"]}/confusion_matrix_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
     plt.show()
 
 
@@ -155,7 +155,7 @@ def plot_histogram(same, different, configs):
     ax.legend()
     ax.grid(True)
     #plt.plot()
-    plt.savefig(f'../report/{configs["path_to_save_report"]}/euclidean_distance_histogram_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
+    plt.savefig(f'{configs["path_to_save_report"]}/euclidean_distance_histogram_{configs["network"]}_margin_{configs["loss"]["ContrastiveLoss"]["margin"]}_th_{configs["loss"]["ContrastiveLoss"]["contrastive_threshold"]}.png')
 
 
 def inference(model, test_loader, loss_fn, configs):
@@ -243,6 +243,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     configurations = parse_yaml_file(args.config_file)
     model_weights = args.model_weights
+
+    os.makedirs(configurations["path_to_save_report"], exist_ok=True)
 
     model, test_loader, loss_fn = inference_factory(configurations)
     model.to(DEVICE)

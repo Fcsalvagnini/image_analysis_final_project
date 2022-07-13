@@ -1,21 +1,17 @@
-epochs: 200
+epochs: 50
 batch_size: 32
-path_to_save_model: "../models/SCConvFingerprintSiameseV2_140_pr4/"
-path_to_save_report: "../report/SCConvFingerprintSiameseV2_140_pr4/"
-wandb: True
-network: SCConvFingerprintSiameseV2_140_pr4
+path_to_save_model: "../models/SimpleConvSiameseNN_dataset_v2/"
+path_to_save_report: "../report/SimpleConvSiameseNN_dataset_v2/"
+wandb: False
+network: SimpleConvSiameseNN_dataset_v2
 
 test:
   batch_size: 1
   verbose: 1
 
 model:
-  SCConvFingerprintSiameseV2:
+  SimpleConvSiameseNN:
     input_size: !!python/list [140, 140]
-    kernel_size: 5
-    output_neurons: 5
-    activation: True
-    pooling_ratio: 4
 
 train_dataset:
   BalancedCroppedDataset:
@@ -23,7 +19,7 @@ train_dataset:
     transform: BasicTransformations
     mode: 0 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/train.txt"
-    repeat: 1
+    repeat: 4
     binarize: True
     invert: True
 
@@ -33,7 +29,7 @@ validation_dataset:
     transform: BasicTransformations
     mode: 0 # 0: gray scale | 1: RGB
     subset_images: "../compare_files/validation.txt"
-    repeat: 4
+    repeat: 1
     binarize: True
     invert: True
 
