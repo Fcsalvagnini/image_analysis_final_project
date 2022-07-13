@@ -49,7 +49,6 @@ class BasicTransformations:
                 transforms.RandomRotation(self.rotate_degrees),
                 transforms.RandomAffine(self.affine_degrees, self.affine_translate,
                                         scale=self.affine_scale),
-                transforms.GaussianBlur(self.gaussian_blur_kernel),
                 transforms.Resize(self.image_size),
                 transforms.ToTensor(),
                 transforms.RandomErasing(p=self.random_erasing_p, 

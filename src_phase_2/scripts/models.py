@@ -268,6 +268,11 @@ class SCConvFingerprintSiameseV2(nn.Module):
                 pooling_ratio=pooling_ratio,
                 normalization_layer=nn.BatchNorm2d
             ),
+            nn.ReflectionPad2d(kernel_size//2),
+            ConvBlock(
+                channels_in=8, channels_out=8, padding=False,
+                kernel_size=kernel_size, activation_function=activation
+            ),
             SCConvBottleneck(
                 sc_channels=8, kernel_size=kernel_size,
                 pooling_ratio=pooling_ratio,
